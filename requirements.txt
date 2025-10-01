@@ -1,3 +1,5 @@
 pyautogui
 pandas
-pillow
+Pillow
+opencv-python
+numpy
