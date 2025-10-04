@@ -10,8 +10,6 @@ import pyautogui
 import time
 import pandas as pd
 from PIL import Image, ImageTk 
-import cv2
-import numpy as np
 
 APP_NAME = "ACS Auto"
 VERSION = "1.0.2"
@@ -100,13 +98,13 @@ class ConfigManager:
             'singlecolor_led_type_btn': 'SingleColor Led.png',
             'dmx2vfd_converter_type_btn': 'Dmx2Vfd Converter.png',
             'device_power_field': 'Device power.png',
-            '_12w_power_btn': '12W.png',
-            '_36w_power_btn': '36W.png',
-            '_100w_power_btn': '100W.png',
-            '_140w_power_btn': '140W.png',
-            '_160w_power_btn': '160W.png',
-            '_150w_power_btn': '150W.png',
-            '_200w_power_btn': '200W.png',
+            '12w_power_btn': '12W.png',
+            '36w_power_btn': '36W.png',
+            '100w_power_btn': '100W.png',
+            '140w_power_btn': '140W.png',
+            '160w_power_btn': '160W.png',
+            '150w_power_btn': '150W.png',
+            '200w_power_btn': '200W.png',
             'write_btn': 'Write.png',
             'save_btn': 'Save.png',
         }
@@ -169,148 +167,69 @@ class AutoACSAutomation:
             logger.error(f"Không tìm thấy file hình ảnh cho '{image_name_key}'.")
         return full_paths
 
-    def find_and_click(self, image_name_key, timeout=30, button='left', expected_hsv_range=None):
-        image_paths = self._get_image_paths_list(image_name_key)
-        if not image_paths:
-            return False
-        
-        screen = pyautogui.screenshot()
-        screen_cv = cv2.cvtColor(np.array(screen), cv2.COLOR_RGB2BGR)
-        
-        start_time = time.time()
-        while time.time() - start_time < timeout:
-            for image_path in image_paths:
-                try:
-                    template = cv2.imread(image_path, cv2.IMREAD_COLOR)
-                    if template is None:
-                        continue
-                    
-                    result = cv2.matchTemplate(screen_cv, template, cv2.TM_CCOEFF_NORMED)
-                    min_val, max_val, min_loc, max_loc = cv2.minMaxLoc(result)
-                    
-                    if max_val >= 1.0:
-                        top_left = max_loc
-                        h, w = template.shape[:2]
-                        bottom_right = (top_left[0] + w, top_left[1] + h)
-                        location = (top_left[0], top_left[1], w, h)
-                        
-                        if expected_hsv_range:
-                            roi = screen_cv[top_left[1]:bottom_right[1], top_left[0]:bottom_right[0]]
-                            hsv_roi = cv2.cvtColor(roi, cv2.COLOR_BGR2HSV)
-                            mask = cv2.inRange(hsv_roi, expected_hsv_range[0], expected_hsv_range[1])
-                            if np.sum(mask) < 100:
-                                continue
-                        
-                        center_x = top_left[0] + w // 2
-                        center_y = top_left[1] + h // 2
-                        pyautogui.click(center_x, center_y, button=button)
-                        logger.info(f"Tìm thấy và click {os.path.basename(image_path)} tại ({center_x}, {center_y})")
-                        return True
-                except Exception as e:
-                    logger.error(f"Lỗi OpenCV với {image_path}: {e}")
-                    pass
-            time.sleep(0.5)
-        return False
-
-
-    def find_and_right_click(self, image_name_key, timeout=30, button='right', double_click=False, confidence_override=None, expected_hsv_range=None):
+    def find_and_click(self, image_name_key, timeout=30, button='left', double_click=False, confidence_override=None):
         image_paths = self._get_image_paths_list(image_name_key)
         if not image_paths:
             return False
 
         current_confidence = confidence_override if confidence_override is not None else self.confidence
-        logger.info(f"Đang tìm kiếm bất kỳ hình ảnh nào trong {image_name_key} (thời gian chờ={timeout}s, độ tin cậy={current_confidence}, expected_hsv_range={expected_hsv_range})")
-        
+        logger.info(f"Đang tìm kiếm bất kỳ hình ảnh nào trong {image_name_key} (thời gian chờ={timeout}s, độ tin cậy={current_confidence})")
         start_time = time.time()
         while time.time() - start_time < timeout:
-            screen = pyautogui.screenshot()
-            screen_cv = cv2.cvtColor(np.array(screen), cv2.COLOR_RGB2BGR)
-            
+            found_any_image_in_this_attempt = False
             for image_path in image_paths:
                 try:
-                    template = cv2.imread(image_path, cv2.IMREAD_COLOR)
-                    if template is None:
-                        logger.warning(f"Không thể đọc file hình ảnh: {image_path}")
-                        continue
-                    
-                    result = cv2.matchTemplate(screen_cv, template, cv2.TM_CCOEFF_NORMED)
-                    min_val, max_val, min_loc, max_loc = cv2.minMaxLoc(result)
-                    
-                    if max_val >= current_confidence:
-                        top_left = max_loc
-                        h, w = template.shape[:2]
-                        bottom_right = (top_left[0] + w, top_left[1] + h)
-                        location = (top_left[0], top_left[1], w, h)
-                        
-                        if expected_hsv_range:
-                            roi = screen_cv[top_left[1]:bottom_right[1], top_left[0]:bottom_right[0]]
-                            hsv_roi = cv2.cvtColor(roi, cv2.COLOR_BGR2HSV)
-                            mask = cv2.inRange(hsv_roi, expected_hsv_range[0], expected_hsv_range[1])
-                            if np.sum(mask) < 100:
-                                logger.warning(f"Tìm thấy template {os.path.basename(image_path)} nhưng màu HSV không khớp. Bỏ qua.")
-                                continue
-                        
-                        center_x = top_left[0] + w // 2
-                        center_y = top_left[1] + h // 2
-                        logger.info(f"Hình ảnh '{os.path.basename(image_path)}' tìm thấy tại ({center_x}, {center_y}). Đang nhấp {'hai lần' if double_click else ''}...")
-                        
+                    time.sleep(self.screenshot_delay)
+                    location = pyautogui.locateOnScreen(image_path, confidence=current_confidence)
+                    if location:
+                        center = pyautogui.center(location)
+                        logger.info(f"Hình ảnh '{os.path.basename(image_path)}' tìm thấy tại {center}. Đang nhấp{' hai lần' if double_click else ''}...")
                         if double_click:
-                            pyautogui.doubleClick(center_x, center_y, interval=0.1)
+                            pyautogui.doubleClick(center.x, center.y, interval=0.1)
                         else:
-                            pyautogui.click(center_x, center_y, button=button)
+                            pyautogui.click(center.x, center.y, button=button)
                         time.sleep(self.action_delay)
                         return True
+                except pyautogui.ImageNotFoundException:
+                    logger.debug(f"Không tìm thấy hình ảnh '{os.path.basename(image_path)}', đang thử tiếp nếu có sẵn.")
+                    pass 
                 except Exception as e:
-                    logger.error(f"Lỗi OpenCV với hình ảnh {os.path.basename(image_path)}: {e}", exc_info=True)
+                    logger.error(f"Lỗi bất ngờ với hình ảnh '{os.path.basename(image_path)}': {e}", exc_info=True)
                     pass
-            time.sleep(0.5)
-        
+            time.sleep(0.5) 
         logger.warning(f"Không tìm thấy bất kỳ hình ảnh nào cho '{image_name_key}' sau {timeout} giây.")
         return False
 
-    def find(self, image_name_key, timeout=30, confidence_override=None, expected_hsv_range=None):
+    def find_and_right_click(self, image_name_key, timeout=30, button='right', double_click=False, confidence_override=None):
         image_paths = self._get_image_paths_list(image_name_key)
         if not image_paths:
             return False
 
         current_confidence = confidence_override if confidence_override is not None else self.confidence
-        logger.info(f"Đang tìm kiếm bất kỳ hình ảnh nào trong {image_name_key} (thời gian chờ={timeout}s, độ tin cậy={current_confidence}, expected_hsv_range={expected_hsv_range})")
-        
+        logger.info(f"Đang tìm kiếm bất kỳ hình ảnh nào trong {image_name_key} (thời gian chờ={timeout}s, độ tin cậy={current_confidence})")
         start_time = time.time()
         while time.time() - start_time < timeout:
-            screen = pyautogui.screenshot()
-            screen_cv = cv2.cvtColor(np.array(screen), cv2.COLOR_RGB2BGR)
-            
+            found_any_image_in_this_attempt = False
             for image_path in image_paths:
                 try:
-                    template = cv2.imread(image_path, cv2.IMREAD_COLOR)
-                    if template is None:
-                        logger.warning(f"Không thể đọc file hình ảnh: {image_path}")
-                        continue
-                    
-                    result = cv2.matchTemplate(screen_cv, template, cv2.TM_CCOEFF_NORMED)
-                    min_val, max_val, min_loc, max_loc = cv2.minMaxLoc(result)
-                    
-                    if max_val >= current_confidence:
-                        top_left = max_loc
-                        h, w = template.shape[:2]
-                        bottom_right = (top_left[0] + w, top_left[1] + h)
-                        
-                        if expected_hsv_range:
-                            roi = screen_cv[top_left[1]:bottom_right[1], top_left[0]:bottom_right[0]]
-                            hsv_roi = cv2.cvtColor(roi, cv2.COLOR_BGR2HSV)
-                            mask = cv2.inRange(hsv_roi, expected_hsv_range[0], expected_hsv_range[1])
-                            if np.sum(mask) < 100:
-                                logger.warning(f"Tìm thấy template {os.path.basename(image_path)} nhưng màu HSV không khớp. Bỏ qua.")
-                                continue
-                        
-                        logger.info(f"Hình ảnh '{os.path.basename(image_path)}' đã tìm thấy.")
+                    time.sleep(self.screenshot_delay)
+                    location = pyautogui.locateOnScreen(image_path, confidence=current_confidence)
+                    if location:
+                        center = pyautogui.center(location)
+                        logger.info(f"Hình ảnh '{os.path.basename(image_path)}' tìm thấy tại {center}. Đang nhấp{' hai lần' if double_click else ''}...")
+                        if double_click:
+                            pyautogui.doubleClick(center.x, center.y, interval=0.1)
+                        else:
+                            pyautogui.click(center.x, center.y, button=button)
+                        time.sleep(self.action_delay)
                         return True
+                except pyautogui.ImageNotFoundException:
+                    logger.debug(f"Không tìm thấy hình ảnh '{os.path.basename(image_path)}', đang thử tiếp nếu có sẵn.")
+                    pass 
                 except Exception as e:
-                    logger.error(f"Lỗi OpenCV với hình ảnh {os.path.basename(image_path)}: {e}", exc_info=True)
+                    logger.error(f"Lỗi bất ngờ với hình ảnh '{os.path.basename(image_path)}': {e}", exc_info=True)
                     pass
-            time.sleep(0.5)
-        
+            time.sleep(0.5) 
         logger.warning(f"Không tìm thấy bất kỳ hình ảnh nào cho '{image_name_key}' sau {timeout} giây.")
         return False
 
@@ -507,6 +426,32 @@ class AutoACSAutomation:
         logger.info(f"Ghi địa chỉ {device_type_name} thành công.")
         return f"Ghi địa chỉ {device_type_name} thành công."
 
+    def find(self, image_name_key, timeout=30, confidence_override=None):
+        image_paths = self._get_image_paths_list(image_name_key)
+        if not image_paths:
+            return False
+
+        current_confidence = confidence_override if confidence_override is not None else self.confidence
+        logger.info(f"Đang tìm kiếm bất kỳ hình ảnh nào trong {image_name_key} (thời gian chờ={timeout}s, độ tin cậy={current_confidence})")
+        start_time = time.time()
+        while time.time() - start_time < timeout:
+            for image_path in image_paths:
+                try:
+                    time.sleep(self.screenshot_delay)
+                    location = pyautogui.locateOnScreen(image_path, confidence=current_confidence)
+                    if location:
+                        logger.info(f"Hình ảnh '{os.path.basename(image_path)}' đã tìm thấy.")
+                        return True
+                except pyautogui.ImageNotFoundException:
+                    logger.debug(f"Không tìm thấy hình ảnh '{os.path.basename(image_path)}', đang thử tiếp nếu có sẵn.")
+                    pass
+                except Exception as e:
+                    logger.error(f"Lỗi bất ngờ với hình ảnh '{os.path.basename(image_path)}': {e}", exc_info=True)
+                    pass
+            time.sleep(0.5)
+        logger.warning(f"Không tìm thấy bất kỳ hình ảnh nào cho '{image_name_key}' sau {timeout} giây.")
+        return False
+
     def ghi_dia_chi(self):
         logger.info("Đang bắt đầu quy trình Ghi địa chỉ...")
         if not self.excel_data:
@@ -520,72 +465,75 @@ class AutoACSAutomation:
         led_address = row_data.get('Led')
         
         logger.info(f"Xử lý hàng {self.current_excel_row_index + 1}/{len(self.excel_data)}: Pump={pump_address}, Led={led_address}")
-        results = []
-        try:
-            if not self.find_and_click('discover_btn', timeout=0.2):
-                return "Thất bại: Không thể tìm thấy nút 'Discover'."
-            
-            if not self.find_and_click('scan_btn', timeout=10):
-                return "Thất bại: Không tìm thấy nút 'Scan' trong Device Discovery."
-            
-            logger.info("Đang chờ 'Discovery completed'...")
-            if not self.wait_for_image('discovery_completed_text', timeout=20):
-                return "Thất bại: 'Discovery completed' không xuất hiện trong thời gian chờ."
-            
-            led_locs, pump_locs = self.xac_dinh_vi_tri_thiet_bi(timeout=5)
-        
-            if led_locs:
-                led_result = self.chon_thiet_bi_va_ghi("Tricolor Led", led_locs[0], led_address)
-                results.append(f"LED ({led_address}): {led_result}")
-                if "Failed" in led_result:
-                    return f"Thất bại khi 'Ghi địa chỉ' (LED): {led_result}"
-                
-                time.sleep(1)
-                
-                if pump_locs:
-                    logger.info("Cả LED và PUMP đều được phát hiện. Đang discover lại cho PUMP sau LED.")
-                    if not self.find_and_click('discover_btn', timeout=15):
-                        return "Thất bại: Không thể tìm thấy nút 'Discover' để xử lý PUMP."
-                    
-                    _, pump_locs_after_rediscover = self.xac_dinh_vi_tri_thiet_bi(timeout=5)
-                    
-                    if pump_locs_after_rediscover:
-                        pump_result = self.chon_thiet_bi_va_ghi("AFVarionaut Pump", pump_locs_after_rediscover[0], pump_address)
-                        results.append(f"PUMP ({pump_address}): {pump_result}")
-                        if "Failed" in pump_result:
-                            return f"Thất bại khi 'Ghi địa chỉ' (PUMP): {pump_result}"
-                    else:
-                        return f"Thất bại: Không tìm thấy PUMP sau khi discover lại cho địa chỉ {pump_address}."
-            
-            elif pump_locs:
-                pump_result = self.chon_thiet_bi_va_ghi("AFVarionaut Pump", pump_locs[0], pump_address)
-                results.append(f"PUMP ({pump_address}): {pump_result}")
-                if "Failed" in pump_result:
-                    return f"Thất bại khi 'Ghi địa chỉ' (PUMP): {pump_result}"
-            
-            else:
-                return "Thất bại: Không tìm thấy thiết bị (LED/PUMP) trong cửa sổ Device Discovery sau khi quét."
-        
-        finally:
-            self.increment_excel_row_index()
-            logger.info(f"Đã tăng chỉ mục hàng Excel lên {self.current_excel_row_index}")
 
+        results = []
+
+        if not self.find_and_click('discover_btn', timeout=15):
+            return "Thất bại: Không thể tìm thấy nút 'Discover'."
+        
+        if not self.find_and_click('scan_btn', timeout=10):
+            return "Thất bại: Không tìm thấy nút 'Scan' trong Device Discovery."
+        
+        logger.info("Đang chờ 'Discovery completed'...")
+        if not self.wait_for_image('discovery_completed_text', timeout=20): 
+            return "Thất bại: 'Discovery completed' không xuất hiện trong thời gian chờ."
+        
+        led_locs, pump_locs = self.xac_dinh_vi_tri_thiet_bi(timeout=5)
+     
+        if led_locs:
+            led_result = self.chon_thiet_bi_va_ghi("Tricolor Led", led_locs[0], led_address)
+            results.append(f"LED ({led_address}): {led_result}")
+            if "Failed" in led_result:
+                self.increment_excel_row_index()
+                return f"Thất bại khi 'Ghi địa chỉ' (LED): {led_result}"
+            
+            time.sleep(1)
+            
+            if pump_locs:
+                logger.info("Cả LED và PUMP đều được phát hiện. Đang discover lại cho PUMP sau LED.")
+                if not self.find_and_click('discover_btn', timeout=15):
+                    return "Thất bại: Không thể tìm thấy nút 'Discover' để xử lý PUMP."
+                
+                _, pump_locs_after_rediscover = self.xac_dinh_vi_tri_thiet_bi(timeout=5)
+                
+                if pump_locs_after_rediscover:
+                    pump_result = self.chon_thiet_bi_va_ghi("AFVarionaut Pump", pump_locs_after_rediscover[0], pump_address)
+                    results.append(f"PUMP ({pump_address}): {pump_result}")
+                    if "Failed" in pump_result:
+                        self.increment_excel_row_index()
+                        return f"Thất bại khi 'Ghi địa chỉ' (PUMP): {pump_result}"
+                else:
+                    self.increment_excel_row_index()
+                    return f"Thất bại: Không tìm thấy PUMP sau khi discover lại cho địa chỉ {pump_address}."
+        
+        elif pump_locs:
+            pump_result = self.chon_thiet_bi_va_ghi("AFVarionaut Pump", pump_locs[0], pump_address)
+            results.append(f"PUMP ({pump_address}): {pump_result}")
+            if "Failed" in pump_result:
+                self.increment_excel_row_index()
+                return f"Thất bại khi 'Ghi địa chỉ' (PUMP): {pump_result}"
+        
+        else:
+            self.increment_excel_row_index()
+            return "Thất bại: Không tìm thấy thiết bị (LED/PUMP) trong cửa sổ Device Discovery sau khi quét."
+        
+        self.increment_excel_row_index() 
         return "\n ".join(results) + f" (Đã hoàn thành hàng {self.current_excel_row_index}/{len(self.excel_data)})"
 
     def test(self):
         logger.info("Đang bắt đầu quy trình Test...")
 
-        if not auto_acs.find_and_right_click('acs_device_manager_2', timeout=0.2):
-            pass
-        else:
-            if not auto_acs.find_and_click('close_window_btn', timeout=0.2):
-                return "Thất bại: Could not find 'close_window_btn' button."
-
-        if not auto_acs.find('acs_device_configuration_title', timeout=0.2):
-            pass
-        else:
-            if not auto_acs.find_and_click('acs_device_configuration', timeout=0.2):
-                return "Thất bại: Could not find 'acs_device_configuration' button."
+#        if not auto_acs.find_and_right_click('acs_device_manager_2', timeout=0.2):
+#            pass
+#        else:
+ #           if not auto_acs.find_and_click('close_window_btn', timeout=0.2):
+#               return "Thất bại: Could not find 'close_window_btn' button."
+#
+ #      if not auto_acs.find('acs_device_configuration_title', timeout=0.2):
+#           pass
+#       else:
+#           if not auto_acs.find_and_click('acs_device_configuration', timeout=0.2):
+#               return "Thất bại: Could not find 'acs_device_configuration' button."
 
         if not self.find('connected', timeout=0.2):
             if not self.find_and_click('on_off_btn', timeout=0.2):
@@ -734,98 +682,75 @@ class AutoACSAutomation:
         logger.info(f"Processing row {self.current_excel_row_index + 1}/{len(self.excel_data)}: Pump={pump_address}, Led={led_address}")
 
         results = []
-        try:
-            if not self.find_and_click('discover_btn', timeout=0.2):
-                return "Thất bại: Không thể tìm thấy nút 'Discover'."
+
+        if not self.find_and_click('discover_btn', timeout=15):
+            return "Thất bại: Không thể tìm thấy nút 'Discover'."
+        
+        if not self.find_and_click('scan_btn', timeout=10):
+            return "Thất bại: Không tìm thấy nút 'Scan' trong Device Discovery."
+        
+        logger.info("Đang chờ 'Discovery completed'...")
+        if not self.wait_for_image('discovery_completed_text', timeout=20): 
+            return "Thất bại: Văn bản 'Discovery completed' không xuất hiện sau khi quét trong thời gian chờ. Discover thiết bị có thể đã thất bại."
+        
+        led_locs, pump_locs = self.xac_dinh_vi_tri_thiet_bi(timeout=5)
+
+        if led_locs:
+            led_result = self.chon_thiet_bi_va_ghi("Tricolor Led", led_locs[0], led_address)
+
+            if not self.find_and_click('run_dmx_test_btn', timeout=10):
+                return "Thất bại: Could not find 'Run DMX Test' button."
+
+            time.sleep(0.5)
+
+            if not self.is_slider_already_moved('dmx_slider_0_2', timeout=0.2):
+                if not self.drag_slider('dmx_slider_0', 0, -100, duration=0.6):
+                    return "Thất bại: Không thể kéo thanh trượt 0."
+            else:
+                logger.info("Slider 0 is already moved, skipping dragging it.")
+
+            if not self.drag_slider('dmx_slider_1', 0, -85, duration=0.6): # Kéo lên 85 pixel, 1 giây
+                return "Thất bại: Không thể kéo thanh trượt 1 lên."
+            time.sleep(0.2)
+            if not self.drag_slider('dmx_slider_1', 0, 85, duration=0.6):  # Kéo xuống 85 pixel, 1 giây
+                return "Thất bại: Không thể kéo thanh trượt 1 xuống."
+
+            if not self.drag_slider('dmx_slider_2', 0, -85, duration=0.6):
+                return "Thất bại: Không thể kéo thanh trượt 2 lên."
+            time.sleep(0.2)
+            if not self.drag_slider('dmx_slider_2', 0, 85, duration=0.6):
+                return "Thất bại: Không thể kéo thanh trượt 2 xuống."
+
+            if not self.drag_slider('dmx_slider_3', 0, -85, duration=0.6):
+                return "Thất bại: Không thể kéo thanh trượt 3 lên."
+            time.sleep(0.2)
+            if not self.drag_slider('dmx_slider_3', 0, 85, duration=0.6):
+                return "Thất bại: Không thể kéo thanh trượt 3 xuống."
             
-            if not self.find_and_click('scan_btn', timeout=10):
-                return "Thất bại: Không tìm thấy nút 'Scan' trong Device Discovery."
+            if not self.find_and_click('selec_all_1', timeout=1):
+                return "Thất bại: Không thể bật select all."
             
-            logger.info("Đang chờ 'Discovery completed'...")
-            if not self.wait_for_image('discovery_completed_text', timeout=20): 
-                return "Thất bại: Văn bản 'Discovery completed' không xuất hiện sau khi quét trong thời gian chờ. Discover thiết bị có thể đã thất bại."
+            if not self.drag_slider('dmx_slider_1', 0, -85, duration=0.6):
+                return "Thất bại: Không thể kéo thanh trượt 1 lên."
+            time.sleep(2)
+            if not self.drag_slider('dmx_slider_1', 0, 85, duration=0.6):
+                return "Thất bại: Không thể kéo thanh trượt 1 xuống." 
+                       
+            if not self.find_and_click('selec_all_2', timeout=1):
+                return "Thất bại: Không thể tắt select all."
             
-            led_locs, pump_locs = self.xac_dinh_vi_tri_thiet_bi(timeout=5)
+            if not self.find_and_click('stop_dmx_test_btn', timeout=10):
+                return "Thất bại: Không thể tìm thấy nút 'Stop DMX Test'."
 
-            if led_locs:
-                led_result = self.chon_thiet_bi_va_ghi("Tricolor Led", led_locs[0], led_address)
-
-                if not self.find_and_click('run_dmx_test_btn', timeout=10):
-                    return "Thất bại: Could not find 'Run DMX Test' button."
-
-                time.sleep(0.5)
-
-                if not self.is_slider_already_moved('dmx_slider_0_2', timeout=0.2):
-                    if not self.drag_slider('dmx_slider_0', 0, -100, duration=0.6):
-                        return "Thất bại: Không thể kéo thanh trượt 0."
-                else:
-                    logger.info("Slider 0 is already moved, skipping dragging it.")
-
-                if not self.drag_slider('dmx_slider_1', 0, -85, duration=0.6): # Kéo lên 85 pixel, 1 giây
-                    return "Thất bại: Không thể kéo thanh trượt 1 lên."
-                time.sleep(0.2)
-                if not self.drag_slider('dmx_slider_1', 0, 85, duration=0.6):  # Kéo xuống 85 pixel, 1 giây
-                    return "Thất bại: Không thể kéo thanh trượt 1 xuống."
-
-                if not self.drag_slider('dmx_slider_2', 0, -85, duration=0.6):
-                    return "Thất bại: Không thể kéo thanh trượt 2 lên."
-                time.sleep(0.2)
-                if not self.drag_slider('dmx_slider_2', 0, 85, duration=0.6):
-                    return "Thất bại: Không thể kéo thanh trượt 2 xuống."
-
-                if not self.drag_slider('dmx_slider_3', 0, -85, duration=0.6):
-                    return "Thất bại: Không thể kéo thanh trượt 3 lên."
-                time.sleep(0.2)
-                if not self.drag_slider('dmx_slider_3', 0, 85, duration=0.6):
-                    return "Thất bại: Không thể kéo thanh trượt 3 xuống."
+            if pump_locs:
+                logger.info("Cả LED và PUMP đều được phát hiện. Đang discover lại cho PUMP sau LED.")
+                if not self.find_and_click('discover_btn', timeout=15):
+                    return "Thất bại: Could not find 'Discover' button to process PUMP."
                 
-                if not self.find_and_click('selec_all_1', timeout=1):
-                    return "Thất bại: Không thể bật select all."
+                _, pump_locs_after_rediscover = self.xac_dinh_vi_tri_thiet_bi(timeout=5)
                 
-                if not self.drag_slider('dmx_slider_1', 0, -85, duration=0.6):
-                    return "Thất bại: Không thể kéo thanh trượt 1 lên."
-                time.sleep(2)
-                if not self.drag_slider('dmx_slider_1', 0, 85, duration=0.6):
-                    return "Thất bại: Không thể kéo thanh trượt 1 xuống." 
-                        
-                if not self.find_and_click('selec_all_2', timeout=1):
-                    return "Thất bại: Không thể tắt select all."
-                
-                if not self.find_and_click('stop_dmx_test_btn', timeout=10):
-                    return "Thất bại: Không thể tìm thấy nút 'Stop DMX Test'."
-
-                if pump_locs:
-                    logger.info("Cả LED và PUMP đều được phát hiện. Đang discover lại cho PUMP sau LED.")
-                    if not self.find_and_click('discover_btn', timeout=15):
-                        return "Thất bại: Could not find 'Discover' button to process PUMP."
-                    
-                    _, pump_locs_after_rediscover = self.xac_dinh_vi_tri_thiet_bi(timeout=5)
-                    
-                    if pump_locs_after_rediscover:
-                        pump_result = self.chon_thiet_bi_va_ghi("AFVarionaut Pump", pump_locs_after_rediscover[0], pump_address)
-
-                    if not self.find_and_click('run_dmx_test_btn', timeout=10):
-                        return "Thất bại: Could not find 'Run DMX Test' button."
-
-                    time.sleep(0.2)
-
-                    if not self.is_slider_already_moved('dmx_slider_0_2', timeout=0.2):
-                        if not self.drag_slider('dmx_slider_0', 0, -100, duration=0.5):
-                            return "Thất bại: Không thể kéo thanh trượt 0."
-                    else:
-                        logger.info("Slider 0 is already moved, skipping dragging it.")
-
-                    if not self.drag_slider('dmx_slider_1', 0, -85, duration=1):
-                        return "Thất bại: Không thể kéo thanh trượt 1 lên."
-                    time.sleep(1)
-                    if not self.drag_slider('dmx_slider_1', 0, 85, duration=1):
-                        return "Thất bại: Không thể kéo thanh trượt 1 xuống."
-
-                    if not self.find_and_click('stop_dmx_test_btn', timeout=10):
-                        return "Thất bại: Could not find 'Stop DMX Test' button."
-
-            elif pump_locs:
-                pump_result = self.chon_thiet_bi_va_ghi("AFVarionaut Pump", pump_locs[0], pump_address)
+                if pump_locs_after_rediscover:
+                    pump_result = self.chon_thiet_bi_va_ghi("AFVarionaut Pump", pump_locs_after_rediscover[0], pump_address)
 
                 if not self.find_and_click('run_dmx_test_btn', timeout=10):
                     return "Thất bại: Could not find 'Run DMX Test' button."
@@ -846,15 +771,35 @@ class AutoACSAutomation:
 
                 if not self.find_and_click('stop_dmx_test_btn', timeout=10):
                     return "Thất bại: Could not find 'Stop DMX Test' button."
-            
-            else:
-                self.increment_excel_row_index()
-                return "Thất bại: No devices (LED/PUMP) found in Device Discovery window after Scan."
 
-            return f"Thành công: 'Ghi địa chỉ & Test' đã hoàn thành."
-        finally:
+        elif pump_locs:
+            pump_result = self.chon_thiet_bi_va_ghi("AFVarionaut Pump", pump_locs[0], pump_address)
+
+            if not self.find_and_click('run_dmx_test_btn', timeout=10):
+                return "Thất bại: Could not find 'Run DMX Test' button."
+
+            time.sleep(0.2)
+
+            if not self.is_slider_already_moved('dmx_slider_0_2', timeout=0.2):
+                if not self.drag_slider('dmx_slider_0', 0, -100, duration=0.5):
+                    return "Thất bại: Không thể kéo thanh trượt 0."
+            else:
+                logger.info("Slider 0 is already moved, skipping dragging it.")
+
+            if not self.drag_slider('dmx_slider_1', 0, -85, duration=1):
+                return "Thất bại: Không thể kéo thanh trượt 1 lên."
+            time.sleep(1)
+            if not self.drag_slider('dmx_slider_1', 0, 85, duration=1):
+                return "Thất bại: Không thể kéo thanh trượt 1 xuống."
+
+            if not self.find_and_click('stop_dmx_test_btn', timeout=10):
+                return "Thất bại: Could not find 'Stop DMX Test' button."
+        
+        else:
             self.increment_excel_row_index()
-            logger.info(f"Đã tăng chỉ mục hàng Excel lên {self.current_excel_row_index}")
+            return "Thất bại: No devices (LED/PUMP) found in Device Discovery window after Scan."
+
+        return f"Thành công: 'Ghi địa chỉ & Test' đã hoàn thành."
 
     def drag_slider(self, slider_image_key, offset_x, offset_y, duration=1):
         image_paths = self._get_image_paths_list(slider_image_key)
@@ -949,17 +894,17 @@ class AutoACSAutomation:
             return f"Thất bại: Could not find 'Device power' field."
 
         device_power_map = {
-            "60": "_60w_power_btn",
-            "100": "_100w_power_btn",
-            "140": "_140w_power_btn",
-            "160": "_160w_power_btn",
-            "120": "_120w_power_btn",
-            "150": "_150w_power_btn",
-            "200": "_200w_power_btn",
-            "18": "_18w_power_btn",
-            "36": "_36w_power_btn",
-            "6": "_6w_power_btn",
-            "12": "_12w_power_btn",
+            "60": "60w_power_btn",
+            "100": "100w_power_btn",
+            "140": "140w_power_btn",
+            "160": "160w_power_btn",
+            "120": "120w_power_btn",
+            "150": "150w_power_btn",
+            "200": "200w_power_btn",
+            "18": "18w_power_btn",
+            "36": "36w_power_btn",
+            "6": "6w_power_btn",
+            "12": "12w_power_btn",
             "Unspecified": "unspecified_power_btn",
         }
 
@@ -1241,12 +1186,10 @@ class AutoACSTool:
         canvas.pack(side="left", fill="both", expand=True)
         scrollbar.pack(side="right", fill="y")
 
-        # Tiêu đề "Cài đặt chung"
         label = ttk.Label(scrollable_frame, text="Cài đặt chung:", font=("ZFVCutiegirl", 12, "bold"))
         label.configure(style='TLabel', background=self.dark_mode_colors['frame_bg'])
         label.grid(row=0, column=0, columnspan=3, sticky=tk.W, pady=(10, 5), padx=5)
 
-        # Các mục nhập chung
         label1 = ttk.Label(scrollable_frame, text="Độ trễ chụp màn hình (giây):")
         label1.configure(style='TLabel', background=self.dark_mode_colors['frame_bg'])
         label1.grid(row=1, column=0, sticky=tk.W, pady=2, padx=5)
@@ -1267,94 +1210,84 @@ class AutoACSTool:
         self.confidence_entry = ttk.Entry(scrollable_frame, width=10)
         self.confidence_entry.configure(style='TEntry')
         self.confidence_entry.grid(row=3, column=1, sticky=tk.W, pady=2, padx=5)
-
-        # Tiêu đề "Đường dẫn ảnh"
+        
         label4 = ttk.Label(scrollable_frame, text="Đường dẫn ảnh (Image Paths):", font=("ZFVCutiegirl", 12, "bold"))
         label4.configure(style='TLabel', background=self.dark_mode_colors['frame_bg'])
         label4.grid(row=4, column=0, columnspan=3, sticky=tk.W, pady=(10, 5), padx=5)
 
-        # Danh sách cấu hình cho các mục nhập image path
-        image_path_configs = [
-            # ACS Device Configuration
-            {"label": "Connected!", "key": "connected"},
-            {"label": "On/Off", "key": "on_off_btn"},
-            {"label": "Discover", "key": "discover_btn"},
-            {"label": "Scan", "key": "scan_btn"},
-            {"label": "Discovery completed", "key": "discovery_completed_text"},
-            {"label": "Tricolor Led", "key": "tricolor_led_item"},
-            {"label": "AFVarionaut Pump", "key": "afvarionaut_pump_item"},
-            {"label": "DMX Slave Address", "key": "dmx_slave_address_field"},
-            {"label": "Set DMX Slave Address", "key": "set_dmx_slave_address_btn"},
-            {"label": "Run DMX Test", "key": "run_dmx_test_btn"},
-            {"label": "Stop DMX Test", "key": "stop_dmx_test_btn"},
-            {"label": "DMX 0", "key": "dmx_slider_0"},
-            {"label": "DMX 0_2", "key": "dmx_slider_0_2"},
-            {"label": "DMX 1", "key": "dmx_slider_1"},
-            {"label": "DMX 2", "key": "dmx_slider_2"},
-            {"label": "DMX 3", "key": "dmx_slider_3"},
-            {"label": "Uncheck select all", "key": "selec_all_1"},
-            {"label": "Check select all", "key": "selec_all_2"},
-            {"label": "ACS Device Configuration title", "key": "acs_device_configuration_title"},
-            {"label": "Acs device Configuration", "key": "acs_device_configuration"},
-            # ACS Device Manager
-            {"label": "Acs device Manager title", "key": "acs_device_manager_title"},
-            {"label": "Acs device Manager 1", "key": "acs_device_manager_1"},
-            {"label": "Acs device Manager 2", "key": "acs_device_manager_2"},
-            {"label": "Close window", "key": "close_window_btn"},
-            {"label": "Load", "key": "load_btn"},
-            {"label": "Adl file", "key": "adl_file"},
-            {"label": "Open", "key": "open_adl_btn"},
-            {"label": "Add 1", "key": "add_btn_1"},
-            {"label": "Add 2", "key": "add_btn_2"},
-            {"label": "Generate", "key": "generate_btn"},
-            {"label": "Device type", "key": "device_type_field"},
-            {"label": "Submersible Pump", "key": "submersible_pump_type_btn"},
-            {"label": "Tricolor Led", "key": "tricolor_led_type_btn"},
-            {"label": "SingleColor Led", "key": "singlecolor_led_type_btn"},
-            {"label": "Dmx2Vfd Converter", "key": "dmx2vfd_converter_type_btn"},
-            {"label": "Device power (W)", "key": "device_power_field"},
-            {"label": "12W", "key": "_12w_power_btn"},
-            {"label": "36W", "key": "_36w_power_btn"},
-            {"label": "100W", "key": "_100w_power_btn"},
-            {"label": "140W", "key": "_140w_power_btn"},
-            {"label": "160W", "key": "_160w_power_btn"},
-            {"label": "150W", "key": "_150w_power_btn"},
-            {"label": "200W", "key": "_200w_power_btn"},
-            {"label": "Write", "key": "write_btn"},
-            {"label": "Save", "key": "save_btn"},
-        ]
+        def create_image_path_entry(parent_frame, label_text, config_key, row):
+            label = ttk.Label(parent_frame, text=label_text)
+            label.configure(style='TLabel', background=self.dark_mode_colors['frame_bg'])
+            label.grid(row=row, column=0, sticky=tk.W, pady=2, padx=5)
+            entry = ttk.Entry(parent_frame, width=20)
+            entry.configure(style='TEntry')
+            entry.grid(row=row, column=1, sticky=tk.W, pady=2, padx=5)
 
-        # Tạo các mục nhập image path tự động
-        current_row = 5  # Bắt đầu từ row=5, sau tiêu đề "Đường dẫn ảnh"
-        for config in image_path_configs:
-            entry = self.create_image_path_entry(scrollable_frame, config["label"], config["key"], current_row)
-            setattr(self, f"{config['key']}_path", entry)
-            current_row += 1
+            choose_label = ttk.Button(parent_frame, text="Chọn", command=lambda: self.browse_image_path(entry, config_key), width=5)
+            choose_label.configure(style='TButton')
+            choose_label.grid(row=row, column=2, padx=5)
 
-        # Nút Lưu Cài đặt
+            setattr(self, f"{config_key}_path", entry)
+            return entry
+            
+        # ACS Device Configuration
+        self.connected_path = create_image_path_entry(scrollable_frame, "Connected!", 'connected', 5)
+        self.on_off_btn_path = create_image_path_entry(scrollable_frame, "On/Off", 'on_off_btn', 6)
+        self.discover_btn_path = create_image_path_entry(scrollable_frame, "Discover", 'discover_btn', 7)
+        self.scan_btn_path = create_image_path_entry(scrollable_frame, "Scan", 'scan_btn', 8)
+        self.discovery_completed_text_path = create_image_path_entry(scrollable_frame, "Discovery completed", 'discovery_completed_text', 9)
+        self.tricolor_led_item_path = create_image_path_entry(scrollable_frame, "Tricolor Led", 'tricolor_led_item', 10)
+        self.afvarionaut_pump_item_path = create_image_path_entry(scrollable_frame, "AFVarionaut Pump", 'afvarionaut_pump_item', 11)
+        self.dmx_slave_address_field_path = create_image_path_entry(scrollable_frame, "DMX Slave Address", 'dmx_slave_address_field', 12)
+        self.set_dmx_slave_address_btn_path = create_image_path_entry(scrollable_frame, "Set DMX Slave Address", 'set_dmx_slave_address_btn', 13)
+        self.run_dmx_test_btn_path = create_image_path_entry(scrollable_frame, "Run DMX Test", 'run_dmx_test_btn', 14)
+        self.stop_dmx_test_btn_path = create_image_path_entry(scrollable_frame, "Stop DMX Test", 'stop_dmx_test_btn', 15)
+        self.dmx_slider_0_path = create_image_path_entry(scrollable_frame, "DMX 0", 'dmx_slider_0', 16)
+        self.dmx_slider_0_2_path = create_image_path_entry(scrollable_frame, "DMX 0_2", 'dmx_slider_0_2', 17)
+        self.dmx_slider_1_path = create_image_path_entry(scrollable_frame, "DMX 1", 'dmx_slider_1', 18)
+        self.dmx_slider_2_path = create_image_path_entry(scrollable_frame, "DMX 2", 'dmx_slider_2', 19)
+        self.dmx_slider_3_path = create_image_path_entry(scrollable_frame, "DMX 3", 'dmx_slider_3', 20)
+        self.selec_all_1_path = create_image_path_entry(scrollable_frame, "Uncheck select all", 'selec_all_1', 21)
+        self.selec_all_2_path = create_image_path_entry(scrollable_frame, "Check select all", 'selec_all_2', 22)
+
+        # Acs Device Manager
+        self.acs_device_manager_title_path = create_image_path_entry(scrollable_frame, "Acs device Manager title", 'acs_device_manager_title', 23)
+        self.acs_device_configuration_title_path = create_image_path_entry(scrollable_frame, "ACS Device Configuration title", 'acs_device_configuration_title', 24)
+        self.acs_device_configuration_path = create_image_path_entry(scrollable_frame, "Acs device Configuration", 'acs_device_configuration', 25)
+        self.acs_device_manager_1_path = create_image_path_entry(scrollable_frame, "Acs device Manager 1", 'acs_device_manager_1', 26)
+        self.acs_device_manager_2_path = create_image_path_entry(scrollable_frame, "Acs device Manager 2", 'acs_device_manager_2', 27)
+        self.close_window_btn_path = create_image_path_entry(scrollable_frame, "Close window", 'close_window_btn', 28)
+        self.load_btn_path = create_image_path_entry(scrollable_frame, "Load", 'load_btn', 30)
+        self.adl_file_path = create_image_path_entry(scrollable_frame, "Adl file", 'adl_file', 31)
+        self.open_adl_btn_path = create_image_path_entry(scrollable_frame, "Open", 'open_adl_btn', 32)
+        self.add_btn_1_path = create_image_path_entry(scrollable_frame, "Add 1", 'add_btn_1', 33)
+        self.add_btn_2_path = create_image_path_entry(scrollable_frame, "Add 2", 'add_btn_2', 34)
+        self.generate_btn_path = create_image_path_entry(scrollable_frame, "Generate", 'generate_btn', 35)
+        self.device_type_field_path = create_image_path_entry(scrollable_frame, "Device type", 'device_type_field', 36)
+        self.submersible_pump_type_btn_path = create_image_path_entry(scrollable_frame, "Submersible Pump", 'submersible_pump_type_btn', 37)
+        self.tricolor_led_type_btn_path = create_image_path_entry(scrollable_frame, "Tricolor Led", 'tricolor_led_type_btn', 38)
+        self.singlecolor_led_type_btn_path = create_image_path_entry(scrollable_frame, "SingleColor Led", 'singlecolor_led_type_btn', 39)
+        self.dmx2vfd_converter_type_btn_path = create_image_path_entry(scrollable_frame, "Dmx2Vfd Converter", 'dmx2vfd_converter_type_btn', 40)
+        self.device_power_field_path = create_image_path_entry(scrollable_frame, "Device power (W)", 'device_power_field', 41)
+        self._12w_power_btn_path = create_image_path_entry(scrollable_frame, "12W", '12w_power_btn', 42)
+        self._36w_power_btn_path = create_image_path_entry(scrollable_frame, "36W", '36w_power_btn', 43)
+        self._100w_power_btn_path = create_image_path_entry(scrollable_frame, "100W", '100w_power_btn', 44)
+        self._140w_power_btn_path = create_image_path_entry(scrollable_frame, "140W", '140w_power_btn', 45)
+        self._160w_power_btn_path = create_image_path_entry(scrollable_frame, "160W", '160w_power_btn', 46)
+        self._150w_power_btn_path = create_image_path_entry(scrollable_frame, "150W", '150w_power_btn', 47)
+        self._200w_power_btn_path = create_image_path_entry(scrollable_frame, "200W", '200w_power_btn', 48)
+        self.write_btn_path = create_image_path_entry(scrollable_frame, "Write", 'write_btn', 49)
+        self.save_btn_path = create_image_path_entry(scrollable_frame, "Save", 'save_btn', 50)
+
         button_frame = ttk.Frame(scrollable_frame)
         button_frame.configure(style='TFrame')
-        button_frame.grid(row=current_row, column=0, columnspan=3, pady=10, padx=5)
+        button_frame.grid(row=51, column=0, columnspan=3, pady=10, padx=5)
 
         save_btn = ttk.Button(button_frame, text="Lưu Cài đặt", command=self.save_settings_from_gui)
         save_btn.configure(style='TButton')
         save_btn.pack(side=tk.LEFT, padx=5)
 
         self.load_settings_to_gui()
-
-    def create_image_path_entry(self, parent_frame, label_text, config_key, row):
-        label = ttk.Label(parent_frame, text=label_text)
-        label.configure(style='TLabel', background=self.dark_mode_colors['frame_bg'])
-        label.grid(row=row, column=0, sticky=tk.W, pady=2, padx=5)
-        entry = ttk.Entry(parent_frame, width=20)
-        entry.configure(style='TEntry')
-        entry.grid(row=row, column=1, sticky=tk.W, pady=2, padx=5)
-
-        choose_label = ttk.Button(parent_frame, text="Chọn", command=lambda: self.browse_image_path(entry, config_key), width=5)
-        choose_label.configure(style='TButton')
-        choose_label.grid(row=row, column=2, padx=5)
-
-        return entry
 
     def create_suki_tab(self):
         tab = ttk.Frame(self.notebook, padding="20")
@@ -1492,13 +1425,13 @@ class AutoACSTool:
         _set_image_entry(self.singlecolor_led_type_btn_path, 'singlecolor_led_type_btn')
         _set_image_entry(self.dmx2vfd_converter_type_btn_path, 'dmx2vfd_converter_type_btn')
         _set_image_entry(self.device_power_field_path, 'device_power_field')
-        _set_image_entry(self._12w_power_btn_path, '_12w_power_btn')
-        _set_image_entry(self._36w_power_btn_path, '_36w_power_btn')
-        _set_image_entry(self._100w_power_btn_path, '_100w_power_btn')
-        _set_image_entry(self._140w_power_btn_path, '_140w_power_btn')
-        _set_image_entry(self._160w_power_btn_path, '_160w_power_btn')
-        _set_image_entry(self._150w_power_btn_path, '_150w_power_btn')
-        _set_image_entry(self._200w_power_btn_path, '_200w_power_btn')
+        _set_image_entry(self._12w_power_btn_path, '12w_power_btn')
+        _set_image_entry(self._36w_power_btn_path, '36w_power_btn')
+        _set_image_entry(self._100w_power_btn_path, '100w_power_btn')
+        _set_image_entry(self._140w_power_btn_path, '140w_power_btn')
+        _set_image_entry(self._160w_power_btn_path, '160w_power_btn')
+        _set_image_entry(self._150w_power_btn_path, '150w_power_btn')
+        _set_image_entry(self._200w_power_btn_path, '200w_power_btn')
         _set_image_entry(self.write_btn_path, 'write_btn')
         _set_image_entry(self.save_btn_path, 'save_btn')
 
@@ -1544,13 +1477,13 @@ class AutoACSTool:
             config_manager.set('IMAGE_PATHS', 'singlecolor_led_type_btn', self.singlecolor_led_type_btn_path.get())
             config_manager.set('IMAGE_PATHS', 'dmx2vfd_converter_type_btn', self.dmx2vfd_converter_type_btn_path.get())
             config_manager.set('IMAGE_PATHS', 'device_power_field', self.device_power_field_path.get())
-            config_manager.set('IMAGE_PATHS', '_12w_power_btn', self._12w_power_btn_path.get())
-            config_manager.set('IMAGE_PATHS', '_36w_power_btn', self._36w_power_btn_path.get())
-            config_manager.set('IMAGE_PATHS', '_100w_power_btn', self._100w_power_btn_path.get())
-            config_manager.set('IMAGE_PATHS', '_140w_power_btn', self._140w_power_btn_path.get())
-            config_manager.set('IMAGE_PATHS', '_160w_power_btn', self._160w_power_btn_path.get())
-            config_manager.set('IMAGE_PATHS', '_150w_power_btn', self._150w_power_btn_path.get())
-            config_manager.set('IMAGE_PATHS', '_200w_power_btn', self._200w_power_btn_path.get())
+            config_manager.set('IMAGE_PATHS', '12w_power_btn', self._12w_power_btn_path.get())
+            config_manager.set('IMAGE_PATHS', '36w_power_btn', self._36w_power_btn_path.get())
+            config_manager.set('IMAGE_PATHS', '100w_power_btn', self._100w_power_btn_path.get())
+            config_manager.set('IMAGE_PATHS', '140w_power_btn', self._140w_power_btn_path.get())
+            config_manager.set('IMAGE_PATHS', '160w_power_btn', self._160w_power_btn_path.get())
+            config_manager.set('IMAGE_PATHS', '150w_power_btn', self._150w_power_btn_path.get())
+            config_manager.set('IMAGE_PATHS', '200w_power_btn', self._200w_power_btn_path.get())
             config_manager.set('IMAGE_PATHS', 'write_btn', self.write_btn_path.get())
             config_manager.set('IMAGE_PATHS', 'save_btn', self.save_btn_path.get())
 
@@ -1591,11 +1524,11 @@ class AutoACSTool:
         selected_device_power = self.device_power_var.get()
 
         results = []
-        if not auto_acs.find('acs_device_manager_title', timeout=0.2):
-            if not auto_acs.find_and_click('acs_device_manager_1', timeout=0.2):
-                results.append("Thất bại: Could not find 'acs_device_manager_1' button.")
-        else:
-            pass   
+#       if not auto_acs.find('acs_device_manager_title', timeout=0.2):
+#           if not auto_acs.find_and_click('acs_device_manager_1', timeout=0.2):
+#               results.append("Thất bại: Could not find 'acs_device_manager_1' button.")
+#       else:
+#           pass   
 
         if auto_acs.find('add_btn_1', timeout=0.2):
             if not auto_acs.find_and_click('load_btn', timeout=0.2):
