@@ -1,5 +1,5 @@
 pyautogui
 pandas
 Pillow
-opencv-python
-numpy
+keyboard
+
