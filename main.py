@@ -12,7 +12,7 @@ import pandas as pd
 from PIL import Image, ImageTk 
 
 APP_NAME = "ACS Auto"
-VERSION = "1.0.3"
+VERSION = "1.0.4"
 
 # --- 1. Logger Setup ---
 def setup_logging():
@@ -810,6 +810,9 @@ class AutoACSAutomation:
         else:
             self.increment_excel_row_index()
             return "Thất bại: No devices (LED/PUMP) found in Device Discovery window after Scan."
+        
+        if not self.find_and_click('on_off_btn', timeout=0.2):
+            return "Thất bại: Không thể tìm thấy nút 'On/Off'."
 
         return f"Thành công: 'Ghi địa chỉ & Test' đã hoàn thành."
 
@@ -1652,9 +1655,8 @@ class AutoACSTool:
             if auto_acs.excel_data and 0 <= row_number < len(auto_acs.excel_data):
                 row = auto_acs.excel_data[row_number]
                 self.no_entry.insert(0, str(row_number + 1))
-                # Ép kiểu về số nguyên rồi về chuỗi để loại bỏ .0
-                self.pump_entry.insert(0, str(int(row['Pump'])))
-                self.led_entry.insert(0, str(int(row['Led'])))
+                self.pump_entry.insert(0, str(row['Pump']))
+                self.led_entry.insert(0, str(row['Led']))
         except Exception as e:
             logger.error(f"Không thể lấy dữ liệu hàng {row_number}: {e}")
 
