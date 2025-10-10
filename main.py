@@ -12,7 +12,7 @@ import pandas as pd
 from PIL import Image, ImageTk 
 
 APP_NAME = "ACS Auto"
-VERSION = "1.0.2"
+VERSION = "1.0.3"
 
 # --- 1. Logger Setup ---
 def setup_logging():
@@ -468,6 +468,12 @@ class AutoACSAutomation:
 
         results = []
 
+        if not self.find('connected', timeout=0.2):
+            if not self.find_and_click('on_off_btn', timeout=0.2):
+                return "Thất bại: Không thể tìm thấy nút 'On/Off'."
+        else:
+            pass
+
         if not self.find_and_click('discover_btn', timeout=15):
             return "Thất bại: Không thể tìm thấy nút 'Discover'."
         
@@ -682,6 +688,12 @@ class AutoACSAutomation:
         logger.info(f"Processing row {self.current_excel_row_index + 1}/{len(self.excel_data)}: Pump={pump_address}, Led={led_address}")
 
         results = []
+
+        if not self.find('connected', timeout=0.2):
+            if not self.find_and_click('on_off_btn', timeout=0.2):
+                return "Thất bại: Không thể tìm thấy nút 'On/Off'."
+        else:
+            pass
 
         if not self.find_and_click('discover_btn', timeout=15):
             return "Thất bại: Không thể tìm thấy nút 'Discover'."
@@ -1640,8 +1652,9 @@ class AutoACSTool:
             if auto_acs.excel_data and 0 <= row_number < len(auto_acs.excel_data):
                 row = auto_acs.excel_data[row_number]
                 self.no_entry.insert(0, str(row_number + 1))
-                self.pump_entry.insert(0, str(row['Pump']))
-                self.led_entry.insert(0, str(row['Led']))
+                # Ép kiểu về số nguyên rồi về chuỗi để loại bỏ .0
+                self.pump_entry.insert(0, str(int(row['Pump'])))
+                self.led_entry.insert(0, str(int(row['Led'])))
         except Exception as e:
             logger.error(f"Không thể lấy dữ liệu hàng {row_number}: {e}")
 
