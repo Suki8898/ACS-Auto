@@ -66,6 +66,7 @@ class ConfigManager:
             'connected': 'connected.png',
             'on_off_btn': 'on_off_btn.png',
             'discover_btn': 'discover_blue.png,discover_white.png',
+            'device_discovery_title': 'device_discovery_title.png',
             'scan_btn': 'scan_btn.png',
             'discovery_completed_text': 'discovery_completed_text.png',
             'tricolor_led_item': 'tricolor_led_item.png',
@@ -88,8 +89,8 @@ class ConfigManager:
             'acs_device_manager_2': 'acs_device_manager_2.png',
             'close_window_btn': 'close_window_btn.png',
             'load_btn': 'Load.png',
-            'list': 'List.png',
-            'add_btn': 'Add.png',
+            'add_btn_1': 'Add_1.png',
+            'add_btn_2': 'Add_2.png',
             'adl_file': 'Adl.png',
             'open_adl_btn': 'Open.png',
             'generate_btn': 'Generate.png',
@@ -316,13 +317,13 @@ class AutoACSAutomation:
     def increment_excel_row_index(self):
         if self.excel_data and self.current_excel_row_index < len(self.excel_data):
             self.current_excel_row_index += 1
-            logger.info(f"Chỉ mục hàng Excel đã tăng lên {self.current_excel_row_index}")
+            logger.info(f"Excel đã tăng 1 hàng {self.current_excel_row_index}")
             return True
         return False
 
     def reset_excel_row_index(self):
         self.current_excel_row_index = 0
-        logger.info("Chỉ mục hàng Excel đã được đặt lại.")
+        logger.info("Hàng Excel đã được đặt lại.")
 
     # --- Các hàm logic ---
 
@@ -479,16 +480,19 @@ class AutoACSAutomation:
 
         results = []
 
-        if self.find('connected', timeout=0.2):
+        if self.find('device_discovery_title', timeout=0.2):
             pass
         else:
-            if not self.find_and_click('on_off_btn', timeout=0.2):
-                return "Thất bại: Không thể tìm thấy nút 'On/Off'."
+            if not self.find('connected', timeout=0.2):
+                if not self.find_and_click('on_off_btn', timeout=0.2):
+                    return "Thất bại: Không thể tìm thấy nút 'On/Off'."
+            else:
+                pass
 
-        if not self.find_and_click('discover_btn', timeout=15):
-            return "Thất bại: Không thể tìm thấy nút 'Discover'."
+            if not self.find_and_click('discover_btn', timeout=0.2):
+                return "Thất bại: Không thể tìm thấy nút 'Discover'."
         
-        if not self.find_and_click('scan_btn', timeout=10):
+        if not self.find_and_click('scan_btn', timeout=0.2):
             return "Thất bại: Không tìm thấy nút 'Scan' trong Device Discovery."
         
         logger.info("Đang chờ 'Discovery completed'...")
@@ -545,21 +549,24 @@ class AutoACSAutomation:
 
         auto_acs.stop_requested = False
 
-        if self.find('connected', timeout=0.2):
+        if self.find('device_discovery_title', timeout=0.2):
             pass
         else:
-            if not self.find_and_click('on_off_btn', timeout=0.2):
-                return "Thất bại: Không thể tìm thấy nút 'On/Off'."
+            if not self.find('connected', timeout=0.2):
+                if not self.find_and_click('on_off_btn', timeout=0.2):
+                    return "Thất bại: Không thể tìm thấy nút 'On/Off'."
+            else:
+                pass
 
-        if not self.find_and_click('discover_btn', timeout=2):
-            return "Thất bại: Không thể tìm thấy nút 'Discover'."
+            if not self.find_and_click('discover_btn', timeout=0.2):
+                return "Thất bại: Không thể tìm thấy nút 'Discover'."
         
         if not self.find_and_click('scan_btn', timeout=2):
             return "Thất bại: Không tìm thấy nút 'Scan' trong Device Discovery."
         
         logger.info("Đang chờ 'Discovery completed'...")
         if not self.wait_for_image('discovery_completed_text', timeout=20): 
-            return "Thất bại: 'Discovery completed' không xuất hiện trong thời gian chờ."
+            return "Thất bại: Văn bản 'Discovery completed' không xuất hiện sau khi quét trong thời gian chờ. Discover thiết bị có thể đã thất bại."
         
         led_locs, pump_locs = self.xac_dinh_vi_tri_thiet_bi(timeout=5)
 
@@ -662,10 +669,10 @@ class AutoACSAutomation:
             else:
                 logger.info("Thanh trượt 0 đã được kéo.")
 
-            if not self.drag_slider('dmx_slider_1', 0, -85, duration=0.6):
+            if not self.drag_slider('dmx_slider_1', 0, -85, duration=1):
                 return "Thất bại: Không thể kéo thanh trượt 1 lên."
-            time.sleep(0.1)
-            if not self.drag_slider('dmx_slider_1', 0, 85, duration=0.6):
+            time.sleep(1) 
+            if not self.drag_slider('dmx_slider_1', 0, 85, duration=1):
                 return "Thất bại: Không thể kéo thanh trượt 1 xuống."
 
             if not self.find_and_click('stop_dmx_test_btn', timeout=10):
@@ -699,14 +706,17 @@ class AutoACSAutomation:
 
         results = []
 
-        if self.find('connected', timeout=0.2):
+        if self.find('device_discovery_title', timeout=0.2):
             pass
         else:
-            if not self.find_and_click('on_off_btn', timeout=0.2):
-                return "Thất bại: Không thể tìm thấy nút 'On/Off'."
+            if not self.find('connected', timeout=0.2):
+                if not self.find_and_click('on_off_btn', timeout=0.2):
+                    return "Thất bại: Không thể tìm thấy nút 'On/Off'."
+            else:
+                pass
 
-        if not self.find_and_click('discover_btn', timeout=15):
-            return "Thất bại: Không thể tìm thấy nút 'Discover'."
+            if not self.find_and_click('discover_btn', timeout=0.2):
+                return "Thất bại: Không thể tìm thấy nút 'Discover'."
         
         if not self.find_and_click('scan_btn', timeout=10):
             return "Thất bại: Không tìm thấy nút 'Scan' trong Device Discovery."
@@ -721,7 +731,7 @@ class AutoACSAutomation:
             led_result = self.chon_thiet_bi_va_ghi("Tricolor Led", led_locs[0], led_address)
 
             if not self.find_and_click('run_dmx_test_btn', timeout=10):
-                return "Thất bại: không thể tìm thấy 'Run DMX Test'."
+                return "Thất bại: Could not find 'Run DMX Test' button."
 
             time.sleep(0.5)
 
@@ -900,7 +910,7 @@ class AutoACSAutomation:
     def _select_device_type(self, device_type):
         logger.info(f"Selecting device type: {device_type}")
         if not self.find_and_click('device_type_field', timeout=10):
-            return f"Thất bại: không thể tìm thấy 'Device type'."
+            return f"Thất bại: Could not find 'Device type' field."
 
         device_type_map = {
             "AFVarionaut Pump": "afvarionaut_pump_type_btn",
@@ -913,7 +923,7 @@ class AutoACSAutomation:
         if device_type in device_type_map:
             image_key = device_type_map[device_type]
             if not self.find_and_click(image_key, timeout=10):
-                return f"Thất bại: không thể tìm thấy nút '{device_type}'."
+                return f"Thất bại: Could not find '{device_type}' button."
         else:
             return f"Thất bại: Invalid device type: {device_type}"
 
@@ -922,7 +932,7 @@ class AutoACSAutomation:
     def _select_device_power(self, device_power):
         logger.info(f"Selecting device power: {device_power}")
         if not self.find_and_click('device_power_field', timeout=10):
-            return f"Thất bại: không thể tìm thấy 'Device power'."
+            return f"Thất bại: Could not find 'Device power' field."
 
         device_power_map = {
             "60": "60w_power_btn",
@@ -942,7 +952,7 @@ class AutoACSAutomation:
         if device_power in device_power_map:
             image_key = device_power_map[device_power]
             if not self.find_and_click(image_key, timeout=10):
-                return f"Thất bại: không thể tìm thấy '{device_power}'."
+                return f"Thất bại: Could not find '{device_power}' button."
         else:
             return f"Thất bại: Invalid device power: {device_power}"
 
@@ -1268,6 +1278,7 @@ class AutoACSTool:
             ("connected", "Connected!"),
             ("on_off_btn", "On/Off"),
             ("discover_btn", "Discover"),
+            ("device_discovery_title", "Device Discovery title"),
             ("scan_btn", "Scan"),
             ("discovery_completed_text", "Discovery completed"),
             ("tricolor_led_item", "Tricolor Led"),
@@ -1292,8 +1303,8 @@ class AutoACSTool:
             ("load_btn", "Load"),
             ("adl_file", "Adl file"),
             ("open_adl_btn", "Open"),
-            ("list", "List"),
-            ("add_btn", "Add"),
+            ("add_btn_1", "Add 1"),
+            ("add_btn_2", "Add 2"),
             ("generate_btn", "Generate"),
             ("device_type_field", "Device type"),
             ("submersible_pump_type_btn", "Submersible Pump"),
@@ -1426,6 +1437,7 @@ class AutoACSTool:
         _set_image_entry(self.connected_path, 'connected')
         _set_image_entry(self.on_off_btn_path, 'on_off_btn')
         _set_image_entry(self.discover_btn_path, 'discover_btn')
+        _set_image_entry(self.device_discovery_title_path,  'device_discovery_title')
         _set_image_entry(self.scan_btn_path, 'scan_btn')
         _set_image_entry(self.discovery_completed_text_path, 'discovery_completed_text')
         _set_image_entry(self.tricolor_led_item_path, 'tricolor_led_item')
@@ -1450,8 +1462,8 @@ class AutoACSTool:
         _set_image_entry(self.load_btn_path, 'load_btn')
         _set_image_entry(self.adl_file_path, 'adl_file')
         _set_image_entry(self.open_adl_btn_path, 'open_adl_btn')
-        _set_image_entry(self.list_path, 'list')
-        _set_image_entry(self.add_btn_path, 'add_btn')
+        _set_image_entry(self.add_btn_1_path, 'add_btn_1')
+        _set_image_entry(self.add_btn_2_path, 'add_btn_2')
         _set_image_entry(self.generate_btn_path, 'generate_btn')
         _set_image_entry(self.device_type_field_path, 'device_type_field')
         _set_image_entry(self.submersible_pump_type_btn_path, 'submersible_pump_type_btn')
@@ -1478,6 +1490,7 @@ class AutoACSTool:
             config_manager.set('IMAGE_PATHS', 'connected', self.connected_path.get())
             config_manager.set('IMAGE_PATHS', 'on_off_btn', self.on_off_btn_path.get())
             config_manager.set('IMAGE_PATHS', 'discover_btn', self.discover_btn_path.get())
+            config_manager.set('IMAGE_PATHS', 'device_discovery_title', self.device_discovery_title_path.get())
             config_manager.set('IMAGE_PATHS', 'scan_btn', self.scan_btn_path.get())
             config_manager.set('IMAGE_PATHS', 'discovery_completed_text', self.discovery_completed_text_path.get())
             config_manager.set('IMAGE_PATHS', 'tricolor_led_item', self.tricolor_led_item_path.get())
@@ -1502,8 +1515,8 @@ class AutoACSTool:
             config_manager.set('IMAGE_PATHS', 'load_btn', self.load_btn_path.get())
             config_manager.set('IMAGE_PATHS', 'adl_file', self.adl_file_path.get())
             config_manager.set('IMAGE_PATHS', 'open_adl_btn', self.open_adl_btn_path.get())
-            config_manager.set('IMAGE_PATHS', 'list', self.list_path.get())
-            config_manager.set('IMAGE_PATHS', 'add_btn', self.add_btn_path.get())
+            config_manager.set('IMAGE_PATHS', 'add_btn_1', self.add_btn_1_path.get())
+            config_manager.set('IMAGE_PATHS', 'add_btn_2', self.add_btn_2_path.get())
             config_manager.set('IMAGE_PATHS', 'generate_btn', self.generate_btn_path.get())
             config_manager.set('IMAGE_PATHS', 'device_type_field', self.device_type_field_path.get())
             config_manager.set('IMAGE_PATHS', 'submersible_pump_type_btn', self.submersible_pump_type_btn_path.get())
@@ -1572,25 +1585,25 @@ class AutoACSTool:
 
         results = []
 
-        if not auto_acs.find('list', timeout=0.2):
+        if auto_acs.find('add_btn_1', timeout=0.2):
             if not auto_acs.find_and_click('load_btn', timeout=0.2):
-                results.append("Thất bại: không tìm thấy nút 'load_btn' button.")
+                results.append("Thất bại: Could not find 'load_btn' button.")
 
             if not auto_acs.find_and_click('adl_file', timeout=1):
-                results.append("Thất bại: không thể tìm thấy nút '.adl file'.")
+                results.append("Thất bại: Could not find '.adl file' button.")
 
             if not auto_acs.find_and_click('open_adl_btn', timeout=1):
-                results.append("Thất bại: không thể tìm thấy nút 'Open'.")
+                results.append("Thất bại: Could not find 'Open' button.")
         else:
             pass
 
 
-        if not auto_acs.find_and_click('add_btn', timeout=0.2):
-            results.append("Thất bại: không thể tìm thấy nút 'Add'.")
+        if not auto_acs.find_and_click('add_btn_2', timeout=0.2):
+            results.append("Thất bại: Could not find 'Add' button.")
                 
 
         if not auto_acs.find_and_click('generate_btn', timeout=10):
-            results.append("Thất bại: không thể tìm thấy nút 'Generate'.")
+            results.append("Thất bại: Could not find 'Generate' button.")
 
         # Bỏ qua bước chọn Device Type nếu là "Afvarionaut Pump"
         if selected_device_type != "AFVarionaut Pump":
@@ -1610,10 +1623,10 @@ class AutoACSTool:
             results.append(f"Device power is {selected_device_power}, skipping Device Power selection.")
 
         if not auto_acs.find_and_click('write_btn', timeout=10):
-            results.append("Thất bại: không thể tìm thấy nút 'Write'.")
+            results.append("Thất bại: Could not find 'Write' button.")
 
         if not auto_acs.find_and_click('save_btn', timeout=10):
-            results.append("Thất bại: không thể tìm thấy nút 'Save'.")
+            results.append("Thất bại: Could not find 'Save' button.")
 
         if "Failed" in "".join(results):
             self.update_status("Lỗi: Ghi UID thất bại. Vui lòng kiểm tra log.")
@@ -1716,7 +1729,7 @@ class AutoACSTool:
     def reset_excel_index_gui(self):
         auto_acs.reset_excel_row_index()
         self.update_excel_status()
-        self.update_status("Thông báo: Chỉ mục hàng Excel đã được reset về 0.")
+        self.update_status("Thông báo: Hàng Excel đã được reset về 0.")
         self.update_entry_fields(0)
 
 
