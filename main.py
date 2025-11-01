@@ -13,7 +13,7 @@ from PIL import Image, ImageTk
 import keyboard
 
 APP_NAME = "ACS Auto"
-VERSION = "1.1.2"
+VERSION = "1.1.3"
 
 # --- 1. Logger Setup ---
 def setup_logging():
@@ -66,7 +66,7 @@ class ConfigManager:
             'connected': 'connected.png',
             'on_off_btn': 'on_off_btn.png',
             'discover_btn': 'discover_blue.png,discover_white.png',
-            'device_discovery_title': 'device_discovery_title.png',
+            'device_discovery_title_1': 'device_discovery_title_1.png',
             'scan_btn': 'scan_btn.png',
             'discovery_completed_text': 'discovery_completed_text.png',
             'tricolor_led_item': 'tricolor_led_item.png',
@@ -480,7 +480,7 @@ class AutoACSAutomation:
 
         results = []
 
-        if self.find('device_discovery_title', timeout=0.2):
+        if self.find('device_discovery_title_1', timeout=0.2):
             pass
         else:
             if not self.find('connected', timeout=0.2):
@@ -538,8 +538,14 @@ class AutoACSAutomation:
             self.increment_excel_row_index()
             return "Thất bại: Không tìm thấy thiết bị (LED/PUMP) trong cửa sổ Device Discovery sau khi quét."
 
-        if not self.find_and_click('on_off_btn', timeout=0.2):
-            return "Thất bại: Không thể tìm thấy nút 'On/Off'."
+        #if not self.find_and_click('on_off_btn', timeout=0.2):
+            #return "Thất bại: Không thể tìm thấy nút 'On/Off'."
+
+        if not self.find_and_click('discover_btn', timeout=0.2):
+                return "Thất bại: Không thể tìm thấy nút 'Discover'."
+        
+        if not self.find_and_click('scan_btn', timeout=0.2):
+            return "Thất bại: Không tìm thấy nút 'Scan' trong Device Discovery."
         
         self.increment_excel_row_index() 
         return "\n ".join(results) + f" (Đã hoàn thành hàng {self.current_excel_row_index}/{len(self.excel_data)})"
@@ -549,14 +555,14 @@ class AutoACSAutomation:
 
         auto_acs.stop_requested = False
 
-        if self.find('device_discovery_title', timeout=0.2):
+        if self.find('device_discovery_title_1', timeout=0.2):
             pass
         else:
-            if not self.find('connected', timeout=0.2):
+            if self.find('connected', timeout=0.2):
+                pass
+            else:
                 if not self.find_and_click('on_off_btn', timeout=0.2):
                     return "Thất bại: Không thể tìm thấy nút 'On/Off'."
-            else:
-                pass
 
             if not self.find_and_click('discover_btn', timeout=0.2):
                 return "Thất bại: Không thể tìm thấy nút 'Discover'."
@@ -578,8 +584,10 @@ class AutoACSAutomation:
 
             time.sleep(0.2) 
 
-            if not self.find_and_click('selec_all_2', timeout=0.2):
-                logger.info("Không tìm thấy 'select all' để tắt, bỏ qua.")
+            if self.find_and_click('selec_all_2', timeout=0.2):
+                logger.info("Đã tắt 'select all'.")
+            else:
+                pass
 
             if not self.is_slider_already_moved('dmx_slider_0_2', timeout=0.2):
                 if not self.drag_slider('dmx_slider_0', 0, -100, duration=0.6):
@@ -706,7 +714,7 @@ class AutoACSAutomation:
 
         results = []
 
-        if self.find('device_discovery_title', timeout=0.2):
+        if self.find('device_discovery_title_1', timeout=0.2):
             pass
         else:
             if not self.find('connected', timeout=0.2):
@@ -1278,7 +1286,7 @@ class AutoACSTool:
             ("connected", "Connected!"),
             ("on_off_btn", "On/Off"),
             ("discover_btn", "Discover"),
-            ("device_discovery_title", "Device Discovery title"),
+            ("device_discovery_title_1", "Device Discovery title"),
             ("scan_btn", "Scan"),
             ("discovery_completed_text", "Discovery completed"),
             ("tricolor_led_item", "Tricolor Led"),
@@ -1437,7 +1445,7 @@ class AutoACSTool:
         _set_image_entry(self.connected_path, 'connected')
         _set_image_entry(self.on_off_btn_path, 'on_off_btn')
         _set_image_entry(self.discover_btn_path, 'discover_btn')
-        _set_image_entry(self.device_discovery_title_path,  'device_discovery_title')
+        _set_image_entry(self.device_discovery_title_1_path,  'device_discovery_title_1')
         _set_image_entry(self.scan_btn_path, 'scan_btn')
         _set_image_entry(self.discovery_completed_text_path, 'discovery_completed_text')
         _set_image_entry(self.tricolor_led_item_path, 'tricolor_led_item')
@@ -1490,7 +1498,7 @@ class AutoACSTool:
             config_manager.set('IMAGE_PATHS', 'connected', self.connected_path.get())
             config_manager.set('IMAGE_PATHS', 'on_off_btn', self.on_off_btn_path.get())
             config_manager.set('IMAGE_PATHS', 'discover_btn', self.discover_btn_path.get())
-            config_manager.set('IMAGE_PATHS', 'device_discovery_title', self.device_discovery_title_path.get())
+            config_manager.set('IMAGE_PATHS', 'device_discovery_title_1', self.device_discovery_title_1_path.get())
             config_manager.set('IMAGE_PATHS', 'scan_btn', self.scan_btn_path.get())
             config_manager.set('IMAGE_PATHS', 'discovery_completed_text', self.discovery_completed_text_path.get())
             config_manager.set('IMAGE_PATHS', 'tricolor_led_item', self.tricolor_led_item_path.get())
