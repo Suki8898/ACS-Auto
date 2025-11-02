@@ -11,9 +11,10 @@ import time
 import pandas as pd
 from PIL import Image, ImageTk 
 import keyboard
+import colorsys
 
 APP_NAME = "ACS Auto"
-VERSION = "1.1.3"
+VERSION = "1.1.4"
 
 # --- 1. Logger Setup ---
 def setup_logging():
@@ -1776,11 +1777,7 @@ class AutoACSTool:
         self.btn_import_excel.config(state=state)
 
     def _create_custom_title_bar(self):
-        self.title_bar = tk.Frame(self.master, 
-                                  bg=self.dark_mode_colors['frame_bg'], 
-                                  relief="raised", 
-                                  bd=0, 
-                                  height=30)
+        self.title_bar = tk.Frame(self.master, bg=self.dark_mode_colors['frame_bg'], relief="raised", bd=0, height=30)
         self.title_bar.pack(side="top", fill="x")
 
         icon_path = os.path.join(os.path.dirname(__file__), config_manager.get('GENERAL', 'icon_folder'), 'app.ico')
@@ -1803,7 +1800,8 @@ class AutoACSTool:
             font=('ZFVCutiegirl', 10, 'bold'))
         title_label.pack(side="left", padx=5, pady=2, expand=True, fill="x")
 
-        self.close_button = tk.Button(self.title_bar, 
+        self.close_button = tk.Button(
+            self.title_bar, 
             text="❌", 
             command=self.master.destroy,
             bg=self.dark_mode_colors['frame_bg'],
@@ -1815,7 +1813,22 @@ class AutoACSTool:
             width=4, height=1,
             font=('Arial', 11, 'bold'))
         self.close_button.pack(side="right")
-        
+
+        self.min_button = tk.Button(
+            self.title_bar,
+            text="—", 
+            bg=self.dark_mode_colors['frame_bg'],
+            fg=self.dark_mode_colors['fg'],
+            bd=0, 
+            activebackground=self.dark_mode_colors['select_bg'],
+            activeforeground=self.dark_mode_colors['fg'],
+            highlightthickness=0,
+            width=4, height=1,
+            font=('Arial', 11, 'bold'),
+            command=self.minimize_window
+        )
+        self.min_button.pack(side="right")
+
         self.close_button.bind("<Enter>", self._on_close_button_enter)
         self.close_button.bind("<Leave>", self._on_close_button_leave)
 
@@ -1826,6 +1839,90 @@ class AutoACSTool:
         if 'icon_label' in locals():
             icon_label.bind("<ButtonPress-1>", self._start_move_window)
             icon_label.bind("<B1-Motion>", self._move_window)
+        self.master.bind("<Map>", lambda e: self.master.overrideredirect(True))
+
+    def minimize_window(self):
+        self.master.overrideredirect(False)
+        self.master.iconify()
+        self.master.after(200, lambda: self.master.overrideredirect(True))
+
+    def show_mini_bar(self):
+        if hasattr(self, "mini_bar") and self.mini_bar.winfo_exists():
+            self.mini_bar.lift()
+            return
+
+        self.mini_bar = tk.Toplevel(self.master)
+        self.mini_bar.overrideredirect(True)
+        self.mini_bar.attributes("-topmost", True)
+        self.mini_bar.configure(bg="#2b2b2b")
+
+        self.master.update_idletasks()
+        x = self.master.winfo_rootx()
+        y = self.master.winfo_rooty()
+        main_width = self.master.winfo_width()
+        main_height = self.master.winfo_height()
+
+        width, height = 140, 40
+
+        self.mini_bar.geometry(f"{width}x{height}+{x}+{y}")
+
+        try:
+            self.mini_bar.wm_attributes("-alpha", 0.92)
+        except:
+            pass
+
+        def create_rainbow_canvas(parent, text="A C S  A u t o  :3", font=("ZFVCutiegirl", 11, "bold"), bg="#2b2b2b", speed=50):
+            canvas = tk.Canvas(parent, bg=bg, highlightthickness=0)
+            canvas.pack(expand=True, fill="both")
+
+            hue = 0.0
+
+            def draw_text():
+                nonlocal hue
+                canvas.delete("all")
+
+                for i, ch in enumerate(reversed(text)):
+                    offset = (hue + i * 0.01) % 1.0
+                    r, g, b = [int(255 * v) for v in colorsys.hsv_to_rgb(offset, 1, 1)]
+                    color = f'#{r:02x}{g:02x}{b:02x}'
+                    canvas.create_text(25 + (len(text) - i - 1) * 5, 20, text=ch, fill=color, font=font, anchor="w")
+
+                hue = (hue + 0.02) % 1.0
+                canvas.after(speed, draw_text)
+
+            draw_text()
+            return canvas
+
+        canvas = create_rainbow_canvas(self.mini_bar, text="A C S  A u t o  :3")
+
+        canvas.bind("<Button-1>", self.start_move)
+        canvas.bind("<B1-Motion>", self.do_move)
+        canvas.bind("<Double-Button-1>", lambda e: self.restore_main_window())
+        canvas.bind("<Enter>", lambda e: canvas.configure(bg="#3c3c3c"))
+        canvas.bind("<Leave>", lambda e: canvas.configure(bg="#2b2b2b"))
+
+
+    def start_move(self, event):
+        self._x = event.x
+        self._y = event.y
+
+    def do_move(self, event):
+        x = event.x_root - self._x
+        y = event.y_root - self._y
+        self.mini_bar.geometry(f"+{x}+{y}")
+
+    def restore_main_window(self):
+        self.master.deiconify()
+        self.master.lift()
+        self.master.attributes("-topmost", True)
+        self.master.after(100, lambda: self.master.attributes("-topmost", False))
+        if hasattr(self, "mini_bar") and self.mini_bar.winfo_exists():
+            self.mini_bar.destroy()
+
+    def minimize_window(self):
+        self.master.withdraw()
+        self.show_mini_bar()
+
 
     def _start_move_window(self, event):
         self.start_x = event.x
