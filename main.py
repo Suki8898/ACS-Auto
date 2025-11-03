@@ -14,7 +14,7 @@ import keyboard
 import colorsys
 
 APP_NAME = "ACS Auto"
-VERSION = "1.1.4"
+VERSION = "1.1.5"
 
 # --- 1. Logger Setup ---
 def setup_logging():
@@ -1793,7 +1793,8 @@ class AutoACSTool:
             except Exception as e:
                 logger.warning(f"Lỗi khi tải icon cho custom title bar '{icon_path}': {e}")
         
-        title_label = tk.Label(self.title_bar, 
+        title_label = tk.Label(
+            self.title_bar, 
             text=APP_NAME, 
             bg=self.dark_mode_colors['frame_bg'], 
             fg=self.dark_mode_colors['fg'], 
@@ -1901,7 +1902,6 @@ class AutoACSTool:
         canvas.bind("<Enter>", lambda e: canvas.configure(bg="#3c3c3c"))
         canvas.bind("<Leave>", lambda e: canvas.configure(bg="#2b2b2b"))
 
-
     def start_move(self, event):
         self._x = event.x
         self._y = event.y
@@ -1912,12 +1912,18 @@ class AutoACSTool:
         self.mini_bar.geometry(f"+{x}+{y}")
 
     def restore_main_window(self):
+        if hasattr(self, "mini_bar") and self.mini_bar.winfo_exists():
+            self.mini_bar.update_idletasks()
+            x = self.mini_bar.winfo_x()
+            y = self.mini_bar.winfo_y()
+            self.mini_bar.destroy()
+
+            self.master.geometry(f"+{x}+{y}")
+
         self.master.deiconify()
         self.master.lift()
         self.master.attributes("-topmost", True)
         self.master.after(100, lambda: self.master.attributes("-topmost", False))
-        if hasattr(self, "mini_bar") and self.mini_bar.winfo_exists():
-            self.mini_bar.destroy()
 
     def minimize_window(self):
         self.master.withdraw()
