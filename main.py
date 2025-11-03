@@ -14,7 +14,7 @@ import keyboard
 import colorsys
 
 APP_NAME = "ACS Auto"
-VERSION = "1.1.5"
+VERSION = "1.1.6"
 
 # --- 1. Logger Setup ---
 def setup_logging():
@@ -993,7 +993,7 @@ class AutoACSTool:
 
         self.master.overrideredirect(True) 
         
-        self._create_custom_title_bar()
+        self.create_custom_title_bar()
 
         taskbar_icon_path = os.path.join(os.path.dirname(__file__), config_manager.get('GENERAL', 'icon_folder'), 'app.ico')
         if os.path.exists(taskbar_icon_path):
@@ -1776,7 +1776,7 @@ class AutoACSTool:
         self.btn_ghi_dia_chi_test.config(state=state)
         self.btn_import_excel.config(state=state)
 
-    def _create_custom_title_bar(self):
+    def create_custom_title_bar(self):
         self.title_bar = tk.Frame(self.master, bg=self.dark_mode_colors['frame_bg'], relief="raised", bd=0, height=30)
         self.title_bar.pack(side="top", fill="x")
 
@@ -1793,13 +1793,33 @@ class AutoACSTool:
             except Exception as e:
                 logger.warning(f"Lỗi khi tải icon cho custom title bar '{icon_path}': {e}")
         
-        title_label = tk.Label(
-            self.title_bar, 
-            text=APP_NAME, 
-            bg=self.dark_mode_colors['frame_bg'], 
-            fg=self.dark_mode_colors['fg'], 
-            font=('ZFVCutiegirl', 10, 'bold'))
-        title_label.pack(side="left", padx=5, pady=2, expand=True, fill="x")
+        def animate_title_rainbow(parent, text="A C S  A u t o", font=("ZFVCutiegirl", 11, "bold"), bg="#2b2b2b", speed=50, spacing=8):
+            canvas = tk.Canvas(parent, bg=bg, highlightthickness=0, height=28)
+            canvas.pack(side="left", fill="x", expand=True)
+
+            hue = 0.0
+            
+            def draw_text():
+                nonlocal hue
+                canvas.delete("all")
+                for i, ch in enumerate(reversed(text)):
+                    offset = (hue + i * 0.01) % 1.0
+                    r, g, b = [int(255 * v) for v in colorsys.hsv_to_rgb(offset, 1, 1)]
+                    color = f'#{r:02x}{g:02x}{b:02x}'
+                    canvas.create_text(175 + (len(text) - i - 1) * 5, 15, text=ch, fill=color, font=font, anchor="w")
+
+                hue = (hue + 0.02) % 1.0
+                canvas.after(speed, draw_text)
+
+            draw_text()
+            return canvas
+
+        canvas = animate_title_rainbow(
+            self.title_bar,
+            text="A C S  A u t o",
+            font=("ZFVCutiegirl", 11, "bold"),
+            bg=self.dark_mode_colors['frame_bg']
+        )
 
         self.close_button = tk.Button(
             self.title_bar, 
@@ -1835,8 +1855,8 @@ class AutoACSTool:
 
         self.title_bar.bind("<ButtonPress-1>", self._start_move_window)
         self.title_bar.bind("<B1-Motion>", self._move_window)
-        title_label.bind("<ButtonPress-1>", self._start_move_window)
-        title_label.bind("<B1-Motion>", self._move_window)
+        canvas.bind("<ButtonPress-1>", self._start_move_window)
+        canvas.bind("<B1-Motion>", self._move_window)
         if 'icon_label' in locals():
             icon_label.bind("<ButtonPress-1>", self._start_move_window)
             icon_label.bind("<B1-Motion>", self._move_window)
