@@ -14,7 +14,7 @@ import keyboard
 import colorsys
 
 APP_NAME = "ACS Auto"
-VERSION = "1.1.6"
+VERSION = "1.1.7"
 
 # --- 1. Logger Setup ---
 def setup_logging():
@@ -1123,35 +1123,129 @@ class AutoACSTool:
         self.update_status("Sẵn sàng hoạt động.")
         self.update_excel_status()
 
+    def clear_combobox_selection(self, event):
+        cb = event.widget
+        cb.selection_clear()
+        cb.icursor(tk.END)
+
     def create_acs_device_manager_tab(self):
         tab = ttk.Frame(self.notebook, padding="20")
         tab.configure(style='TFrame')
         self.notebook.add(tab, text="ACS Device Manager")
 
-        btn_ghi_uid = ttk.Button(tab, text="Ghi UID", command=self.ghi_uid)
-        btn_ghi_uid.configure(style='TButton')
-        btn_ghi_uid.pack(pady=10, fill=tk.X, padx=5)
+        cols_frame = ttk.Frame(tab)
+        cols_frame.pack(fill=tk.BOTH, padx=5, pady=5, expand=True)
 
-        device_type_frame = ttk.LabelFrame(tab, text="Device Type", padding="10")
-        device_type_frame.configure(style='TLabelframe')
-        device_type_frame.pack(fill=tk.X, padx=5, pady=5)
+        left_col = ttk.Frame(cols_frame)
+        left_col.pack(side=tk.LEFT, fill=tk.BOTH, expand=True, padx=(0,5))
 
-        self.device_type_var = tk.StringVar(value="AFVarionaut Pump")
+        btn_ghi_uid_col1 = ttk.Button(left_col, text="Ghi UID", command=lambda: self.ghi_uid(col=1))
+        btn_ghi_uid_col1.configure(style='TButton')
+        btn_ghi_uid_col1.pack(pady=10, fill=tk.X, padx=5)
+
+        device_type_frame_1 = ttk.LabelFrame(left_col, text="Device Type", padding="10")
+        device_type_frame_1.configure(style='TLabelframe')
+        device_type_frame_1.pack(fill=tk.X, padx=5, pady=5)
+
+        self.device_type_var_col1 = tk.StringVar(value="AFVarionaut Pump")
         device_type_options = ["AFVarionaut Pump", "Submersible Pump", "Tricolor Led", "SingleColor Led", "Dmx2Vfd Converter"]
-        self.device_type_dropdown = ttk.Combobox(device_type_frame, textvariable=self.device_type_var, values=device_type_options, state="readonly")
-        self.device_type_dropdown.configure(style='TCombobox')
-        self.device_type_dropdown.pack(pady=5, fill=tk.X, padx=5)
-        self.device_type_dropdown.bind("<<ComboboxSelected>>", self.update_device_power_options)
+        self.device_type_dropdown_col1 = ttk.Combobox(device_type_frame_1, textvariable=self.device_type_var_col1, values=device_type_options, state="readonly")
+        self.device_type_dropdown_col1.configure(style='TCombobox')
+        self.device_type_dropdown_col1.pack(pady=5, fill=tk.X, padx=5)
+        self.device_type_dropdown_col1.bind(
+            "<<ComboboxSelected>>",
+            lambda e: (self.update_device_power_options_col(1), 
+            self.clear_combobox_selection(e))
+        )
 
-        device_power_frame = ttk.LabelFrame(tab, text="Device Power (W)", padding="10")
-        device_power_frame.configure(style='TLabelframe')
-        device_power_frame.pack(fill=tk.X, padx=5, pady=5)
 
-        self.device_power_var = tk.StringVar(value="60")
-        self.device_power_options = ["60", "100", "140", "160"]
-        self.device_power_dropdown = ttk.Combobox(device_power_frame, textvariable=self.device_power_var, values=self.device_power_options, state="readonly")
-        self.device_power_dropdown.configure(style='TCombobox')
-        self.device_power_dropdown.pack(pady=5, fill=tk.X, padx=5)
+        device_power_frame_1 = ttk.LabelFrame(left_col, text="Device Power (W)", padding="10")
+        device_power_frame_1.configure(style='TLabelframe')
+        device_power_frame_1.pack(fill=tk.X, padx=5, pady=5)
+
+        self.device_power_var_col1 = tk.StringVar(value="60")
+        self.device_power_options_col1 = ["60", "100", "140", "160"]
+        self.device_power_dropdown_col1 = ttk.Combobox(device_power_frame_1, textvariable=self.device_power_var_col1, values=self.device_power_options_col1, state="readonly")
+        self.device_power_dropdown_col1.configure(style='TCombobox')
+        self.device_power_dropdown_col1.bind(
+            "<<ComboboxSelected>>",
+            lambda e: self.clear_combobox_selection(e)
+        )
+        self.device_power_dropdown_col1.pack(pady=5, fill=tk.X, padx=5)
+
+        right_col = ttk.Frame(cols_frame)
+        right_col.pack(side=tk.LEFT, fill=tk.BOTH, expand=True, padx=(5,0))
+
+        btn_ghi_uid_col2 = ttk.Button(right_col, text="Ghi UID", command=lambda: self.ghi_uid(col=2))
+        btn_ghi_uid_col2.configure(style='TButton')
+        btn_ghi_uid_col2.pack(pady=10, fill=tk.X, padx=5)
+
+        device_type_frame_2 = ttk.LabelFrame(right_col, text="Device Type", padding="10")
+        device_type_frame_2.configure(style='TLabelframe')
+        device_type_frame_2.pack(fill=tk.X, padx=5, pady=5)
+
+        self.device_type_var_col2 = tk.StringVar(value="AFVarionaut Pump")
+        self.device_type_dropdown_col2 = ttk.Combobox(device_type_frame_2, textvariable=self.device_type_var_col2, values=device_type_options, state="readonly")
+        self.device_type_dropdown_col2.configure(style='TCombobox')
+        self.device_type_dropdown_col2.pack(pady=5, fill=tk.X, padx=5)
+        self.device_type_dropdown_col2.bind(
+            "<<ComboboxSelected>>",
+            lambda e: (self.update_device_power_options_col(2), 
+            self.clear_combobox_selection(e))
+        )
+
+        device_power_frame_2 = ttk.LabelFrame(right_col, text="Device Power (W)", padding="10")
+        device_power_frame_2.configure(style='TLabelframe')
+        device_power_frame_2.pack(fill=tk.X, padx=5, pady=5)
+
+        self.device_power_var_col2 = tk.StringVar(value="60")
+        self.device_power_options_col2 = ["60", "100", "140", "160"]
+        self.device_power_dropdown_col2 = ttk.Combobox(device_power_frame_2, textvariable=self.device_power_var_col2, values=self.device_power_options_col2, state="readonly")
+        self.device_power_dropdown_col2.configure(style='TCombobox')
+        self.device_power_dropdown_col2.bind(
+            "<<ComboboxSelected>>",
+            lambda e: self.clear_combobox_selection(e)
+        )
+        self.device_power_dropdown_col2.pack(pady=5, fill=tk.X, padx=5)
+
+        self.update_device_power_options_col(1)
+        self.update_device_power_options_col(2)
+
+    def update_device_power_options_col(self, col):
+        """
+        Cập nhật options cho combobox 'Device Power' tương ứng với cột col (1 hoặc 2).
+        """
+        if col == 1:
+            selected = self.device_type_var_col1.get()
+            target_dropdown_values = None
+            if selected == "AFVarionaut Pump":
+                self.device_power_options_col1 = ["60", "100", "140", "160"]
+            elif selected == "Submersible Pump":
+                self.device_power_options_col1 = ["120", "150", "200"]
+            elif selected == "Tricolor Led":
+                self.device_power_options_col1 = ["18", "36"]
+            elif selected == "SingleColor Led":
+                self.device_power_options_col1 = ["6", "12"]
+            elif selected == "Dmx2Vfd Converter":
+                self.device_power_options_col1 = ["Unspecified"]
+            self.device_power_dropdown_col1['values'] = self.device_power_options_col1
+            if self.device_power_var_col1.get() not in self.device_power_options_col1:
+                self.device_power_var_col1.set(self.device_power_options_col1[0])
+        else:
+            selected = self.device_type_var_col2.get()
+            if selected == "AFVarionaut Pump":
+                self.device_power_options_col2 = ["60", "100", "140", "160"]
+            elif selected == "Submersible Pump":
+                self.device_power_options_col2 = ["120", "150", "200"]
+            elif selected == "Tricolor Led":
+                self.device_power_options_col2 = ["18", "36"]
+            elif selected == "SingleColor Led":
+                self.device_power_options_col2 = ["6", "12"]
+            elif selected == "Dmx2Vfd Converter":
+                self.device_power_options_col2 = ["Unspecified"]
+            self.device_power_dropdown_col2['values'] = self.device_power_options_col2
+            if self.device_power_var_col2.get() not in self.device_power_options_col2:
+                self.device_power_var_col2.set(self.device_power_options_col2[0])
 
     def create_acs_device_configuration_tab(self):
         tab = ttk.Frame(self.notebook, padding="20")
@@ -1584,13 +1678,17 @@ class AutoACSTool:
             logger.error(f"Lỗi khi dừng bằng ESC: {e}")
 
 
-    def ghi_uid(self):
+    def ghi_uid(self, col=1):
         logger.info("Bắt đầu quy trình 'Ghi UID'...")
 
         auto_acs.stop_requested = False
 
-        selected_device_type = self.device_type_var.get()
-        selected_device_power = self.device_power_var.get()
+        if col == 1:
+            selected_device_type = self.device_type_var_col1.get()
+            selected_device_power = self.device_power_var_col1.get()
+        else:
+            selected_device_type = self.device_type_var_col2.get()
+            selected_device_power = self.device_power_var_col2.get()
 
         results = []
 
@@ -1643,25 +1741,6 @@ class AutoACSTool:
 
         logger.info(f"Ghi UID thành công. Kết quả: {'; '.join(results)}")
         self.update_status("Thông báo: Ghi UID thành công!")
-
-    def update_device_power_options(self, event=None):
-        selected_device = self.device_type_var.get()
-
-        if selected_device == "AFVarionaut Pump":
-            self.device_power_options = ["60", "100", "140", "160"]
-        elif selected_device == "Submersible Pump":
-            self.device_power_options = ["120", "150", "200"]
-        elif selected_device == "Tricolor Led":
-            self.device_power_options = ["18", "36"]
-        elif selected_device == "SingleColor Led":
-            self.device_power_options = ["6", "12"]
-        elif selected_device == "Dmx2Vfd Converter":
-            self.device_power_options = ["Unspecified"]
-
-        self.device_power_dropdown['values'] = self.device_power_options
-
-        if self.device_power_var.get() not in self.device_power_options:
-            self.device_power_var.set(self.device_power_options[0])
 
     def schedule_update(self, delay, trigger):
         if hasattr(self, 'after_id') and self.after_id:
