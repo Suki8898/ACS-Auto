@@ -14,7 +14,7 @@ import keyboard
 import colorsys
 
 APP_NAME = "ACS Auto"
-VERSION = "1.1.7"
+VERSION = "1.2.0"
 
 # --- 1. Logger Setup ---
 def setup_logging():
@@ -110,6 +110,7 @@ class ConfigManager:
             '200w_power_btn': '200W.png',
             'write_btn': 'Write.png',
             'save_btn': 'Save.png',
+            'successfully_text': 'Successfully text.png',
         }
         self.save_config()
 
@@ -169,7 +170,7 @@ class AutoACSAutomation:
                 full_paths.append(full_path)
         
         if not full_paths:
-            logger.error(f"Không tìm thấy file hình ảnh cho '{image_name_key}'.")
+            logger.warning(f"Không tìm thấy file hình ảnh cho '{image_name_key}'.")
         return full_paths
 
     def find_and_click(self, image_name_key, timeout=30, button='left', double_click=False, confidence_override=None):
@@ -325,8 +326,6 @@ class AutoACSAutomation:
     def reset_excel_row_index(self):
         self.current_excel_row_index = 0
         logger.info("Hàng Excel đã được đặt lại.")
-
-    # --- Các hàm logic ---
 
     def xac_dinh_vi_tri_thiet_bi(self, timeout=10):
         try:
@@ -751,7 +750,7 @@ class AutoACSAutomation:
                 if not self.drag_slider('dmx_slider_0', 0, -100, duration=0.6):
                     return "Thất bại: Không thể kéo thanh trượt 0."
             else:
-                logger.info("Slider 0 is already moved, skipping dragging it.")
+                logger.info("Thanh trượt 0 đã được kéo.")
 
             if not self.drag_slider('dmx_slider_1', 0, -85, duration=0.6): # Kéo lên 85 pixel, 1 giây
                 return "Thất bại: Không thể kéo thanh trượt 1 lên."
@@ -808,7 +807,7 @@ class AutoACSAutomation:
                     if not self.drag_slider('dmx_slider_0', 0, -100, duration=0.5):
                         return "Thất bại: Không thể kéo thanh trượt 0."
                 else:
-                    logger.info("Slider 0 is already moved, skipping dragging it.")
+                    logger.info("Thanh trượt 0 đã được kéo.")
 
                 if not self.drag_slider('dmx_slider_1', 0, -85, duration=1):
                     return "Thất bại: Không thể kéo thanh trượt 1 lên."
@@ -917,7 +916,7 @@ class AutoACSAutomation:
         return None
 
     def _select_device_type(self, device_type):
-        logger.info(f"Selecting device type: {device_type}")
+        logger.info(f"Đang chọn thiết bị: {device_type}")
         if not self.find_and_click('device_type_field', timeout=10):
             return f"Thất bại: không thể tìm thấy 'Device type'."
 
@@ -939,7 +938,7 @@ class AutoACSAutomation:
         return f"Device type selected: {device_type}"
     
     def _select_device_power(self, device_power):
-        logger.info(f"Selecting device power: {device_power}")
+        logger.info(f"Đang chọn công suất: {device_power}")
         if not self.find_and_click('device_power_field', timeout=10):
             return f"Thất bại: không thể tìm thấy 'Device power'."
 
@@ -976,7 +975,16 @@ class AutoACSTool:
         master.title(APP_NAME)
         master.geometry("500x600")
         master.resizable(False, False)
+        master.attributes("-topmost", True)
+        master.bind("<Map>", lambda e: self.master.after(50, lambda: (self.master.attributes("-topmost", True), self.master.lift())))
+        master.bind("<FocusIn>", lambda e: self.master.after(50, lambda: self.master.attributes("-topmost", True)))
+
         keyboard.add_hotkey('esc', self.stop_all_automation)
+        keyboard.add_hotkey('f1', lambda: self.ghi_uid(col=1))
+        keyboard.add_hotkey('f2', lambda: self.ghi_uid(col=2))
+        keyboard.add_hotkey('f3', lambda: self.run_automation(auto_acs.ghi_dia_chi))
+        keyboard.add_hotkey('f4', lambda: self.run_automation(auto_acs.test))
+        keyboard.add_hotkey('f5', lambda: self.run_automation(auto_acs.ghi_dia_chi_va_test))
 
         self.dark_mode_colors = {
             'bg': '#1e1e1e',          # Nền tổng thể cửa sổ
@@ -994,16 +1002,6 @@ class AutoACSTool:
         self.master.overrideredirect(True) 
         
         self.create_custom_title_bar()
-
-        taskbar_icon_path = os.path.join(os.path.dirname(__file__), config_manager.get('GENERAL', 'icon_folder'), 'app.ico')
-        if os.path.exists(taskbar_icon_path):
-            try:
-                self.master.iconbitmap(default=taskbar_icon_path)
-                logger.info(f"Đã đặt icon cho Taskbar: {taskbar_icon_path}")
-            except tk.TclError as e:
-                logger.warning(f"Lỗi khi đặt icon Taskbar '{taskbar_icon_path}'. Đảm bảo là file .ico hợp lệ. Lỗi: {e}")
-        else:
-            logger.warning(f"Không tìm thấy file icon Taskbar tại: {taskbar_icon_path}.")
 
         master.configure(bg=self.dark_mode_colors['bg'])
 
@@ -1115,13 +1113,9 @@ class AutoACSTool:
         self.create_settings_tab()
         self.create_suki_tab()
 
-        self.status_var = tk.StringVar()
-        self.status_label = ttk.Label(self.master, textvariable=self.status_var, relief=tk.FLAT, anchor=tk.W, padding=(10, 5))
-        self.status_label.configure(style='TLabel', background=self.dark_mode_colors['frame_bg'], foreground=self.dark_mode_colors['fg'])
-        self.status_label.pack(side=tk.BOTTOM, fill=tk.X)
-
-        self.update_status("Sẵn sàng hoạt động.")
+        logger.info("Sẵn sàng hoạt động.")
         self.update_excel_status()
+
 
     def clear_combobox_selection(self, event):
         cb = event.widget
@@ -1139,7 +1133,7 @@ class AutoACSTool:
         left_col = ttk.Frame(cols_frame)
         left_col.pack(side=tk.LEFT, fill=tk.BOTH, expand=True, padx=(0,5))
 
-        btn_ghi_uid_col1 = ttk.Button(left_col, text="Ghi UID", command=lambda: self.ghi_uid(col=1))
+        btn_ghi_uid_col1 = ttk.Button(left_col, text="Ghi UID (F1)", command=lambda: self.ghi_uid(col=1))
         btn_ghi_uid_col1.configure(style='TButton')
         btn_ghi_uid_col1.pack(pady=10, fill=tk.X, padx=5)
 
@@ -1176,7 +1170,7 @@ class AutoACSTool:
         right_col = ttk.Frame(cols_frame)
         right_col.pack(side=tk.LEFT, fill=tk.BOTH, expand=True, padx=(5,0))
 
-        btn_ghi_uid_col2 = ttk.Button(right_col, text="Ghi UID", command=lambda: self.ghi_uid(col=2))
+        btn_ghi_uid_col2 = ttk.Button(right_col, text="Ghi UID (F2)", command=lambda: self.ghi_uid(col=2))
         btn_ghi_uid_col2.configure(style='TButton')
         btn_ghi_uid_col2.pack(pady=10, fill=tk.X, padx=5)
 
@@ -1252,15 +1246,15 @@ class AutoACSTool:
         tab.configure(style='TFrame')
         self.notebook.add(tab, text="ACS Device Configuration")
 
-        self.btn_ghi_dia_chi = ttk.Button(tab, text="Ghi địa chỉ", command=lambda: self.run_automation(auto_acs.ghi_dia_chi))
+        self.btn_ghi_dia_chi = ttk.Button(tab, text="Ghi địa chỉ (F3)", command=lambda: self.run_automation(auto_acs.ghi_dia_chi))
         self.btn_ghi_dia_chi.configure(style='TButton')
         self.btn_ghi_dia_chi.pack(pady=5, fill=tk.X, padx=5)
 
-        self.btn_test = ttk.Button(tab, text="Test", command=lambda: self.run_automation(auto_acs.test))
+        self.btn_test = ttk.Button(tab, text="Test (F4)", command=lambda: self.run_automation(auto_acs.test))
         self.btn_test.configure(style='TButton')
         self.btn_test.pack(pady=5, fill=tk.X, padx=5)
 
-        self.btn_ghi_dia_chi_test = ttk.Button(tab, text="Ghi địa chỉ & Test", command=lambda: self.run_automation(auto_acs.ghi_dia_chi_va_test))
+        self.btn_ghi_dia_chi_test = ttk.Button(tab, text="Ghi địa chỉ & Test (F5)", command=lambda: self.run_automation(auto_acs.ghi_dia_chi_va_test))
         self.btn_ghi_dia_chi_test.configure(style='TButton')
         self.btn_ghi_dia_chi_test.pack(pady=5, fill=tk.X, padx=5)
 
@@ -1424,6 +1418,7 @@ class AutoACSTool:
             ("_200w_power_btn", "200W"),
             ("write_btn", "Write"),
             ("save_btn", "Save"),
+            ("successfully_text", "Successfully text"),
         ]:
             add_image_path(label_text, key)
 
@@ -1583,6 +1578,7 @@ class AutoACSTool:
         _set_image_entry(self._200w_power_btn_path, '_200w_power_btn')
         _set_image_entry(self.write_btn_path, 'write_btn')
         _set_image_entry(self.save_btn_path, 'save_btn')
+        _set_image_entry(self.successfully_text_path, 'successfully_text')
 
     def save_settings_from_gui(self):
         try:
@@ -1636,14 +1632,15 @@ class AutoACSTool:
             config_manager.set('IMAGE_PATHS', '200w_power_btn', self._200w_power_btn_path.get())
             config_manager.set('IMAGE_PATHS', 'write_btn', self.write_btn_path.get())
             config_manager.set('IMAGE_PATHS', 'save_btn', self.save_btn_path.get())
+            config_manager.set('IMAGE_PATHS', 'successfully_text', self.successfully_text_path.get())
 
             config_manager.save_config()
-            self.update_status("Thông báo: Cài đặt đã được lưu!")
+            logger.info("Thông báo: Cài đặt đã được lưu!")
 
 
         except Exception as e:
-            logger.error(f"Error saving settings: {e}", exc_info=True)
-            self.update_status(f"Lỗi: Không thể lưu cài đặt: {e}")
+            logger.error(f"Lỗi khi lưu cài đặt.: {e}", exc_info=True)
+            logger.info(f"Không thể lưu cài đặt: {e}")
 
 
     def browse_image_path(self, entry_widget, config_key):
@@ -1671,7 +1668,7 @@ class AutoACSTool:
         try:
 
             auto_acs.stop_requested = True
-            self.update_status("🛑 Đã dừng.")
+            logger.info("🛑 Đã dừng.")
             logger.warning("Dừng toàn bộ quá trình!")
 
         except Exception as e:
@@ -1717,8 +1714,7 @@ class AutoACSTool:
             device_type_result = auto_acs._select_device_type(selected_device_type)
             results.append(device_type_result)
         else:
-            logger.info("Device type is Afvarionaut Pump, skipping Device Type selection.")
-            results.append("Device type is Afvarionaut Pump, skipping Device Type selection.")
+            results.append("Loại thiết bị là Bơm Afvarionaut, bỏ qua lựa chọn Loại thiết bị.")
 
         # Bỏ qua bước chọn Device Power nếu là "6", "18", "60", "120", hoặc "Unspecified"
         skip_power_selection = selected_device_power in ("6", "18", "60", "120", "Unspecified")
@@ -1726,21 +1722,18 @@ class AutoACSTool:
             device_power_result = auto_acs._select_device_power(selected_device_power)
             results.append(device_power_result)
         else:
-            logger.info(f"Device power is {selected_device_power}, skipping Device Power selection.")
-            results.append(f"Device power is {selected_device_power}, skipping Device Power selection.")
+            results.append(f"Công suất thiết bị là {selected_device_power}, bỏ qua lựa chọn Công suất thiết bị.")
 
         if not auto_acs.find_and_click('write_btn', timeout=10):
             results.append("Thất bại: không thể tìm thấy nút 'Write'.")
 
-        if not auto_acs.find_and_click('save_btn', timeout=10):
-            results.append("Thất bại: không thể tìm thấy nút 'Save'.")
+        if auto_acs.find('successfully_text', timeout=2):
+            results.append("Thông báo: Ghi UID thành công!")
+            if not auto_acs.find_and_click('save_btn', timeout=10):
+                results.append("Thất bại: không thể tìm thấy nút 'Save'.")
+        else:
+            results.append("Thất bại: Ghi UID thất bại.")
 
-        if "Failed" in "".join(results):
-            self.update_status("Lỗi: Ghi UID thất bại. Vui lòng kiểm tra log.")
-            return
-
-        logger.info(f"Ghi UID thành công. Kết quả: {'; '.join(results)}")
-        self.update_status("Thông báo: Ghi UID thành công!")
 
     def schedule_update(self, delay, trigger):
         if hasattr(self, 'after_id') and self.after_id:
@@ -1765,14 +1758,14 @@ class AutoACSTool:
                 self.update_excel_status()
                 self.update_entry_fields(row_number)
             elif row_number is not None and not auto_acs.excel_data:
-                self.update_status("Lỗi: Không có dữ liệu Excel để tìm kiếm.")
+                logger.warning("Không có dữ liệu Excel để tìm kiếm.")
             elif row_number is not None:
-                self.update_status("Lỗi: Số hàng không hợp lệ hoặc không tìm thấy.")
+                logger.warning("Số hàng không hợp lệ hoặc không tìm thấy.")
         except ValueError:
             pass
         except Exception as e:
-            self.update_status(f"Lỗi: Có lỗi xảy ra: {e}")
-            logger.error(f"Error in delayed_update: {e}", exc_info=True)
+            logger.error(f"Có lỗi xảy ra: {e}")
+            logger.error(f"Lỗi delayed_update: {e}", exc_info=True)
     
     def update_entry_fields(self, row_number):
         self.no_entry.delete(0, tk.END)
@@ -1786,11 +1779,7 @@ class AutoACSTool:
                 self.pump_entry.insert(0, str(row['Pump']))
                 self.led_entry.insert(0, str(row['Led']))
         except Exception as e:
-            logger.error(f"Không thể lấy dữ liệu hàng {row_number}: {e}")
-
-    def update_status(self, message):
-        self.status_var.set(message)
-        logger.info(f"STATUS: {message}")
+            logger.warning(f"Không thể lấy dữ liệu hàng {row_number}: {e}")
 
     def update_excel_status(self):
         if auto_acs.excel_data:
@@ -1807,26 +1796,26 @@ class AutoACSTool:
         )
         if file_path:
             if auto_acs.import_excel_data(file_path):
-                self.update_status("Thông báo: Nhập Excel thành công!")
+                logger.info("Nhập Excel thành công!")
                 self.update_excel_status()
                 self.update_entry_fields(0)
             else:
-                self.update_status("Lỗi: Không thể nhập file Excel. Vui lòng kiểm tra log.")
+                logger.error("Không thể nhập file Excel. Vui lòng kiểm tra log.")
                 self.update_excel_status()
 
     def reset_excel_index_gui(self):
         auto_acs.reset_excel_row_index()
         self.update_excel_status()
-        self.update_status("Thông báo: Hàng Excel đã được reset về 0.")
+        logger.info("Thông báo: Hàng Excel đã được reset về 0.")
         self.update_entry_fields(0)
 
 
     def run_automation(self, func):
         if hasattr(self, 'automation_thread') and self.automation_thread.is_alive():
-            self.update_status("Cảnh báo: Một tác vụ tự động hóa đang chạy. Vui lòng đợi hoặc khởi động lại tool.")
+            logger.warning("Một tác vụ tự động hóa đang chạy. Vui lòng đợi hoặc khởi động lại tool.")
             return
 
-        self.update_status(f"Đang chạy '{func.__name__.replace('_', ' ').title()}'...")
+        logger.info(f"Đang chạy '{func.__name__.replace('_', ' ').title()}'...")
         self.set_buttons_state(tk.DISABLED)
 
         self.automation_thread = threading.Thread(target=self._automation_task, args=(func,))
@@ -1835,15 +1824,15 @@ class AutoACSTool:
     def _automation_task(self, func):
         try:
             if func in [auto_acs.ghi_dia_chi, auto_acs.ghi_dia_chi_va_test] and (auto_acs.excel_data is None or not auto_acs.excel_data):
-                self.update_status("Lỗi: Vui lòng nhập file Excel trước khi chạy chức năng này.")
+                logger.info("Vui lòng nhập file Excel trước khi chạy chức năng này.")
                 self.set_buttons_state(tk.NORMAL)
                 return
 
             result = func()
-            self.update_status(f"Hoàn thành: {result}")
+            logger.info(f"Hoàn thành: {result}")
         except Exception as e:
             logger.error(f"Lỗi trong quá trình tự động hóa: {e}", exc_info=True)
-            self.update_status(f"Lỗi: Có lỗi xảy ra: {e}. Vui lòng kiểm tra log.txt.")
+            logger.info(f"Lỗi: Có lỗi xảy ra: {e}. Vui lòng kiểm tra log.txt.")
         finally:
             self.set_buttons_state(tk.NORMAL)
             self.update_excel_status()
@@ -1870,7 +1859,7 @@ class AutoACSTool:
                     bg=self.dark_mode_colors['frame_bg'])
                 icon_label.pack(side="left", padx=5, pady=2)
             except Exception as e:
-                logger.warning(f"Lỗi khi tải icon cho custom title bar '{icon_path}': {e}")
+                logger.error(f"Lỗi khi tải icon cho custom title bar '{icon_path}': {e}")
         
         def animate_title_rainbow(parent, text="A C S  A u t o", font=("ZFVCutiegirl", 11, "bold"), bg="#2b2b2b", speed=50, spacing=8):
             canvas = tk.Canvas(parent, bg=bg, highlightthickness=0, height=28)
