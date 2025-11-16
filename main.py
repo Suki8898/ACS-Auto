@@ -14,7 +14,7 @@ import keyboard
 import colorsys
 
 APP_NAME = "ACS Auto"
-VERSION = "1.2.0"
+VERSION = "1.2.1"
 
 # --- 1. Logger Setup ---
 def setup_logging():
@@ -140,7 +140,7 @@ config_manager = ConfigManager()
 # --- 3. Automation Core ---
 pyautogui.FAILSAFE = True
 
-class AutoACSAutomation:
+class ACSAutomation:
     def __init__(self):
         self.icon_folder = os.path.join(os.path.dirname(__file__), config_manager.get('GENERAL', 'icon_folder'))
         self.image_folder = os.path.join(os.path.dirname(__file__), config_manager.get('GENERAL', 'image_folder'))
@@ -464,7 +464,7 @@ class AutoACSAutomation:
     def ghi_dia_chi(self):
         logger.info("Đang bắt đầu quy trình Ghi địa chỉ...")
 
-        auto_acs.stop_requested = False
+        acs_auto.stop_requested = False
 
         if not self.excel_data:
             return "Thất bại: Vui lòng nhập file Excel trước."
@@ -553,7 +553,7 @@ class AutoACSAutomation:
     def test(self):
         logger.info("Đang bắt đầu quy trình Test...")
 
-        auto_acs.stop_requested = False
+        acs_auto.stop_requested = False
 
         if self.find('device_discovery_title_1', timeout=0.2):
             pass
@@ -698,7 +698,7 @@ class AutoACSAutomation:
     def ghi_dia_chi_va_test(self):
         logger.info("Đang bắt đầu quy trình Ghi địa chỉ & Test...")
 
-        auto_acs.stop_requested = False
+        acs_auto.stop_requested = False
 
         if not self.excel_data:
             return "Thất bại: Vui lòng nhập file Excel trước."
@@ -966,7 +966,7 @@ class AutoACSAutomation:
 
         return f"Device power selected: {device_power}"
 
-auto_acs = AutoACSAutomation()
+acs_auto = ACSAutomation()
 
 # --- 4. Main GUI ---
 class AutoACSTool:
@@ -977,14 +977,13 @@ class AutoACSTool:
         master.resizable(False, False)
         master.attributes("-topmost", True)
         master.bind("<Map>", lambda e: self.master.after(50, lambda: (self.master.attributes("-topmost", True), self.master.lift())))
-        master.bind("<FocusIn>", lambda e: self.master.after(50, lambda: self.master.attributes("-topmost", True)))
 
         keyboard.add_hotkey('esc', self.stop_all_automation)
         keyboard.add_hotkey('f1', lambda: self.ghi_uid(col=1))
         keyboard.add_hotkey('f2', lambda: self.ghi_uid(col=2))
-        keyboard.add_hotkey('f3', lambda: self.run_automation(auto_acs.ghi_dia_chi))
-        keyboard.add_hotkey('f4', lambda: self.run_automation(auto_acs.test))
-        keyboard.add_hotkey('f5', lambda: self.run_automation(auto_acs.ghi_dia_chi_va_test))
+        keyboard.add_hotkey('f3', lambda: self.run_automation(acs_auto.ghi_dia_chi))
+        keyboard.add_hotkey('f4', lambda: self.run_automation(acs_auto.test))
+        keyboard.add_hotkey('f5', lambda: self.run_automation(acs_auto.ghi_dia_chi_va_test))
 
         self.dark_mode_colors = {
             'bg': '#1e1e1e',          # Nền tổng thể cửa sổ
@@ -1246,15 +1245,15 @@ class AutoACSTool:
         tab.configure(style='TFrame')
         self.notebook.add(tab, text="ACS Device Configuration")
 
-        self.btn_ghi_dia_chi = ttk.Button(tab, text="Ghi địa chỉ (F3)", command=lambda: self.run_automation(auto_acs.ghi_dia_chi))
+        self.btn_ghi_dia_chi = ttk.Button(tab, text="Ghi địa chỉ (F3)", command=lambda: self.run_automation(acs_auto.ghi_dia_chi))
         self.btn_ghi_dia_chi.configure(style='TButton')
         self.btn_ghi_dia_chi.pack(pady=5, fill=tk.X, padx=5)
 
-        self.btn_test = ttk.Button(tab, text="Test (F4)", command=lambda: self.run_automation(auto_acs.test))
+        self.btn_test = ttk.Button(tab, text="Test (F4)", command=lambda: self.run_automation(acs_auto.test))
         self.btn_test.configure(style='TButton')
         self.btn_test.pack(pady=5, fill=tk.X, padx=5)
 
-        self.btn_ghi_dia_chi_test = ttk.Button(tab, text="Ghi địa chỉ & Test (F5)", command=lambda: self.run_automation(auto_acs.ghi_dia_chi_va_test))
+        self.btn_ghi_dia_chi_test = ttk.Button(tab, text="Ghi địa chỉ & Test (F5)", command=lambda: self.run_automation(acs_auto.ghi_dia_chi_va_test))
         self.btn_ghi_dia_chi_test.configure(style='TButton')
         self.btn_ghi_dia_chi_test.pack(pady=5, fill=tk.X, padx=5)
 
@@ -1667,7 +1666,7 @@ class AutoACSTool:
     def stop_all_automation(self):
         try:
 
-            auto_acs.stop_requested = True
+            acs_auto.stop_requested = True
             logger.info("🛑 Đã dừng.")
             logger.warning("Dừng toàn bộ quá trình!")
 
@@ -1678,7 +1677,7 @@ class AutoACSTool:
     def ghi_uid(self, col=1):
         logger.info("Bắt đầu quy trình 'Ghi UID'...")
 
-        auto_acs.stop_requested = False
+        acs_auto.stop_requested = False
 
         if col == 1:
             selected_device_type = self.device_type_var_col1.get()
@@ -1689,29 +1688,29 @@ class AutoACSTool:
 
         results = []
 
-        if not auto_acs.find('list', timeout=0.2):
-            if not auto_acs.find_and_click('load_btn', timeout=0.2):
+        if not acs_auto.find('list', timeout=0.2):
+            if not acs_auto.find_and_click('load_btn', timeout=0.2):
                 results.append("Thất bại: không tìm thấy nút 'load_btn' button.")
 
-            if not auto_acs.find_and_click('adl_file', timeout=1):
+            if not acs_auto.find_and_click('adl_file', timeout=1):
                 results.append("Thất bại: không thể tìm thấy nút '.adl file'.")
 
-            if not auto_acs.find_and_click('open_adl_btn', timeout=1):
+            if not acs_auto.find_and_click('open_adl_btn', timeout=1):
                 results.append("Thất bại: không thể tìm thấy nút 'Open'.")
         else:
             pass
 
 
-        if not auto_acs.find_and_click('add_btn', timeout=0.2):
+        if not acs_auto.find_and_click('add_btn', timeout=0.2):
             results.append("Thất bại: không thể tìm thấy nút 'Add'.")
                 
 
-        if not auto_acs.find_and_click('generate_btn', timeout=10):
+        if not acs_auto.find_and_click('generate_btn', timeout=10):
             results.append("Thất bại: không thể tìm thấy nút 'Generate'.")
 
         # Bỏ qua bước chọn Device Type nếu là "Afvarionaut Pump"
         if selected_device_type != "AFVarionaut Pump":
-            device_type_result = auto_acs._select_device_type(selected_device_type)
+            device_type_result = acs_auto._select_device_type(selected_device_type)
             results.append(device_type_result)
         else:
             results.append("Loại thiết bị là Bơm Afvarionaut, bỏ qua lựa chọn Loại thiết bị.")
@@ -1719,17 +1718,18 @@ class AutoACSTool:
         # Bỏ qua bước chọn Device Power nếu là "6", "18", "60", "120", hoặc "Unspecified"
         skip_power_selection = selected_device_power in ("6", "18", "60", "120", "Unspecified")
         if not skip_power_selection:
-            device_power_result = auto_acs._select_device_power(selected_device_power)
+            device_power_result = acs_auto._select_device_power(selected_device_power)
             results.append(device_power_result)
         else:
             results.append(f"Công suất thiết bị là {selected_device_power}, bỏ qua lựa chọn Công suất thiết bị.")
 
-        if not auto_acs.find_and_click('write_btn', timeout=10):
+        if not acs_auto.find_and_click('write_btn', timeout=10):
             results.append("Thất bại: không thể tìm thấy nút 'Write'.")
 
-        if auto_acs.find('successfully_text', timeout=2):
-            results.append("Thông báo: Ghi UID thành công!")
-            if not auto_acs.find_and_click('save_btn', timeout=10):
+        if acs_auto.find('successfully_text', timeout=2):
+            if acs_auto.find_and_click('save_btn', timeout=10):
+                results.append("Thông báo: Ghi UID thành công!")
+            else:
                 results.append("Thất bại: không thể tìm thấy nút 'Save'.")
         else:
             results.append("Thất bại: Ghi UID thất bại.")
@@ -1746,18 +1746,18 @@ class AutoACSTool:
                 row_number = int(self.no_entry.get()) - 1 if self.no_entry.get() else None
             elif trigger == "pump":
                 pump_value = int(self.pump_entry.get()) if self.pump_entry.get() else None
-                row_number = next((i for i, row in enumerate(auto_acs.excel_data) if row['Pump'] == pump_value), None) if pump_value else None
+                row_number = next((i for i, row in enumerate(acs_auto.excel_data) if row['Pump'] == pump_value), None) if pump_value else None
             elif trigger == "led":
                 led_value = int(self.led_entry.get()) if self.led_entry.get() else None
-                row_number = next((i for i, row in enumerate(auto_acs.excel_data) if row['Led'] == led_value), None) if led_value else None
+                row_number = next((i for i, row in enumerate(acs_auto.excel_data) if row['Led'] == led_value), None) if led_value else None
             else:
                 return
             
-            if row_number is not None and auto_acs.excel_data and 0 <= row_number < len(auto_acs.excel_data):
-                auto_acs.current_excel_row_index = row_number
+            if row_number is not None and acs_auto.excel_data and 0 <= row_number < len(acs_auto.excel_data):
+                acs_auto.current_excel_row_index = row_number
                 self.update_excel_status()
                 self.update_entry_fields(row_number)
-            elif row_number is not None and not auto_acs.excel_data:
+            elif row_number is not None and not acs_auto.excel_data:
                 logger.warning("Không có dữ liệu Excel để tìm kiếm.")
             elif row_number is not None:
                 logger.warning("Số hàng không hợp lệ hoặc không tìm thấy.")
@@ -1773,8 +1773,8 @@ class AutoACSTool:
         self.led_entry.delete(0, tk.END)
         
         try:
-            if auto_acs.excel_data and 0 <= row_number < len(auto_acs.excel_data):
-                row = auto_acs.excel_data[row_number]
+            if acs_auto.excel_data and 0 <= row_number < len(acs_auto.excel_data):
+                row = acs_auto.excel_data[row_number]
                 self.no_entry.insert(0, str(row_number + 1))
                 self.pump_entry.insert(0, str(row['Pump']))
                 self.led_entry.insert(0, str(row['Led']))
@@ -1782,9 +1782,9 @@ class AutoACSTool:
             logger.warning(f"Không thể lấy dữ liệu hàng {row_number}: {e}")
 
     def update_excel_status(self):
-        if auto_acs.excel_data:
-            total_rows = len(auto_acs.excel_data)
-            current_row = auto_acs.current_excel_row_index
+        if acs_auto.excel_data:
+            total_rows = len(acs_auto.excel_data)
+            current_row = acs_auto.current_excel_row_index
             self.excel_status_var.set(f"Đang ghi hàng: {current_row + 1}/{total_rows}")
         else:
             self.excel_status_var.set("Chưa có file Excel được nhập.")
@@ -1795,7 +1795,7 @@ class AutoACSTool:
             filetypes=(("Excel files", "*.xlsx"), ("All files", "*.*"))
         )
         if file_path:
-            if auto_acs.import_excel_data(file_path):
+            if acs_auto.import_excel_data(file_path):
                 logger.info("Nhập Excel thành công!")
                 self.update_excel_status()
                 self.update_entry_fields(0)
@@ -1804,7 +1804,7 @@ class AutoACSTool:
                 self.update_excel_status()
 
     def reset_excel_index_gui(self):
-        auto_acs.reset_excel_row_index()
+        acs_auto.reset_excel_row_index()
         self.update_excel_status()
         logger.info("Thông báo: Hàng Excel đã được reset về 0.")
         self.update_entry_fields(0)
@@ -1823,7 +1823,7 @@ class AutoACSTool:
 
     def _automation_task(self, func):
         try:
-            if func in [auto_acs.ghi_dia_chi, auto_acs.ghi_dia_chi_va_test] and (auto_acs.excel_data is None or not auto_acs.excel_data):
+            if func in [acs_auto.ghi_dia_chi, acs_auto.ghi_dia_chi_va_test] and (acs_auto.excel_data is None or not acs_auto.excel_data):
                 logger.info("Vui lòng nhập file Excel trước khi chạy chức năng này.")
                 self.set_buttons_state(tk.NORMAL)
                 return
@@ -1836,7 +1836,7 @@ class AutoACSTool:
         finally:
             self.set_buttons_state(tk.NORMAL)
             self.update_excel_status()
-            self.update_entry_fields(auto_acs.current_excel_row_index)
+            self.update_entry_fields(acs_auto.current_excel_row_index)
 
     def set_buttons_state(self, state):
         self.btn_ghi_dia_chi.config(state=state)
@@ -2011,7 +2011,7 @@ class AutoACSTool:
         self.master.deiconify()
         self.master.lift()
         self.master.attributes("-topmost", True)
-        self.master.after(100, lambda: self.master.attributes("-topmost", False))
+
 
     def minimize_window(self):
         self.master.withdraw()
