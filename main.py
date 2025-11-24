@@ -14,7 +14,7 @@ import keyboard
 import colorsys
 
 APP_NAME = "ACS Auto"
-VERSION = "1.2.1"
+VERSION = "1.2.2"
 
 # --- 1. Logger Setup ---
 def setup_logging():
@@ -72,7 +72,8 @@ class ConfigManager:
             'discovery_completed_text': 'discovery_completed_text.png',
             'tricolor_led_item': 'tricolor_led_item.png',
             'afvarionaut_pump_item': 'afvarionaut_pump_item.png',
-            'dmx_slave_address_field': 'dmx_slave_address_field.png',
+            'updated_dmx_slave_address': 'dmx_slave_address_field.png',
+            'updated_dmx_slave_address': 'updated_dmx_slave_address',
             'set_dmx_slave_address_btn': 'set_dmx_slave_address_btn.png',
             'run_dmx_test_btn': 'run_dmx_test_btn.png',
             'stop_dmx_test_btn': 'stop_dmx_test_btn.png',
@@ -432,8 +433,11 @@ class ACSAutomation:
         if not self.find_and_click('set_dmx_slave_address_btn', timeout=10):
             return f"Thất bại: Không thể tìm thấy nút 'Ghi địa chỉ DMX slave' cho {device_type_name}."
 
-        logger.info(f"Ghi địa chỉ {device_type_name} thành công.")
-        return f"Ghi địa chỉ {device_type_name} thành công."
+        if self.find('updated_dmx_slave_address',timeout=1):
+            logger.info(f"Ghi địa chỉ {device_type_name} thành công.")
+            return f"Ghi địa chỉ {device_type_name} thành công."
+        else:
+            return f"Ghi địa chỉ {device_type_name} thất bại."
 
     def find(self, image_name_key, timeout=30, confidence_override=None):
         image_paths = self._get_image_paths_list(image_name_key)
@@ -845,8 +849,14 @@ class ACSAutomation:
             self.increment_excel_row_index()
             return "Thất bại: Không thấy thiết bị (LED/PUMP) trong cửa sổ Device Discovery sau khi quét."
         
-        if not self.find_and_click('on_off_btn', timeout=0.2):
-            return "Thất bại: Không thể tìm thấy nút 'On/Off'."
+        if not self.find_and_click('discover_btn', timeout=0.2):
+                return "Thất bại: Không thể tìm thấy nút 'Discover'."
+        
+        if not self.find_and_click('scan_btn', timeout=0.2):
+            return "Thất bại: Không tìm thấy nút 'Scan' trong Device Discovery."
+        
+        self.increment_excel_row_index() 
+        return "\n ".join(results) + f" (Đã hoàn thành hàng {self.current_excel_row_index}/{len(self.excel_data)})"
 
         return f"Thành công: 'Ghi địa chỉ & Test' đã hoàn thành."
 
@@ -1380,6 +1390,7 @@ class AutoACSTool:
             ("tricolor_led_item", "Tricolor Led"),
             ("afvarionaut_pump_item", "AFVarionaut Pump"),
             ("dmx_slave_address_field", "DMX Slave Address"),
+            ("updated_dmx_slave_address", "Updated address"),
             ("set_dmx_slave_address_btn", "Set DMX Slave Address"),
             ("run_dmx_test_btn", "Run DMX Test"),
             ("stop_dmx_test_btn", "Stop DMX Test"),
@@ -1540,6 +1551,7 @@ class AutoACSTool:
         _set_image_entry(self.tricolor_led_item_path, 'tricolor_led_item')
         _set_image_entry(self.afvarionaut_pump_item_path, 'afvarionaut_pump_item')
         _set_image_entry(self.dmx_slave_address_field_path, 'dmx_slave_address_field')
+        _set_image_entry(self.updated_dmx_slave_address_path, 'updated_dmx_slave_address')
         _set_image_entry(self.set_dmx_slave_address_btn_path, 'set_dmx_slave_address_btn')
         _set_image_entry(self.run_dmx_test_btn_path, 'run_dmx_test_btn')
         _set_image_entry(self.stop_dmx_test_btn_path, 'stop_dmx_test_btn')
@@ -1594,6 +1606,7 @@ class AutoACSTool:
             config_manager.set('IMAGE_PATHS', 'tricolor_led_item', self.tricolor_led_item_path.get())
             config_manager.set('IMAGE_PATHS', 'afvarionaut_pump_item', self.afvarionaut_pump_item_path.get())
             config_manager.set('IMAGE_PATHS', 'dmx_slave_address_field', self.dmx_slave_address_field_path.get())
+            config_manager.set('IMAGE_PATHS', 'updated_dmx_slave_address', self.updated_dmx_slave_address_path.get())
             config_manager.set('IMAGE_PATHS', 'set_dmx_slave_address_btn', self.set_dmx_slave_address_btn_path.get())
             config_manager.set('IMAGE_PATHS', 'run_dmx_test_btn', self.run_dmx_test_btn_path.get())
             config_manager.set('IMAGE_PATHS', 'stop_dmx_test_btn', self.stop_dmx_test_btn_path.get())
