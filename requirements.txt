@@ -2,4 +2,6 @@ pyautogui
 pandas
 Pillow
 keyboard
+opencv-python
+openpyxl
 
