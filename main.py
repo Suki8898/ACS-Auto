@@ -1,5 +1,6 @@
+import customtkinter as ctk
 import tkinter as tk
-from tkinter import ttk, filedialog
+from tkinter import ttk, filedialog, messagebox
 import threading
 import os
 import webbrowser
@@ -13,10 +14,19 @@ import keyboard
 import colorsys
 import json
 import copy
+import cv2
+
+ctk.set_appearance_mode("Dark")
+ctk.set_default_color_theme("dark-blue")
 
 APP_NAME = "ACS Auto"
-VERSION = "2.0.0"
-
+VERSION = "2.1.0"
+ACCENT_COLOR = "#c48b9a"
+HOVER_COLOR = "#db9aaa"
+DARK_BG = "#1e1e1e"
+FRAME_BG = "#2b2b2b"
+BUTTON_BG = "#3a3a3a"
+MAIN_FONT = "ZFVCutiegirl"
 
 def setup_logging():
     log_file_path = os.path.join(os.path.dirname(__file__), 'log.txt')
@@ -37,8 +47,6 @@ def setup_logging():
     return logger
 
 logger = setup_logging()
-
-
 
 class ConfigManager:
     def __init__(self, config_file='config.ini'):
@@ -186,7 +194,6 @@ class ACSAutomation:
         while time.time() - start_time < timeout:
             if self.stop_requested:
                 return "Đã dừng."
-            found_any_image_in_this_attempt = False
             for image_path in image_paths:
                 try:
                     time.sleep(self.screenshot_delay)
@@ -201,7 +208,6 @@ class ACSAutomation:
                         time.sleep(self.action_delay)
                         return True
                 except pyautogui.ImageNotFoundException:
-                    logger.debug(f"Không tìm thấy hình ảnh '{os.path.basename(image_path)}', đang thử tiếp nếu có sẵn.")
                     pass 
                 except Exception as e:
                     logger.error(f"Lỗi bất ngờ với hình ảnh '{os.path.basename(image_path)}': {e}", exc_info=True)
@@ -210,38 +216,6 @@ class ACSAutomation:
         logger.warning(f"Không tìm thấy bất kỳ hình ảnh nào cho '{image_name_key}' sau {timeout} giây.")
         return False
 
-    def find_and_right_click(self, image_name_key, timeout=30, button='right', double_click=False, confidence_override=None):
-        image_paths = self._get_image_paths_list(image_name_key)
-        if not image_paths:
-            return False
-
-        current_confidence = confidence_override if confidence_override is not None else self.confidence
-        logger.info(f"Đang tìm kiếm bất kỳ hình ảnh nào trong {image_name_key} (thời gian chờ={timeout}s, độ tin cậy={current_confidence})")
-        start_time = time.time()
-        while time.time() - start_time < timeout:
-            found_any_image_in_this_attempt = False
-            for image_path in image_paths:
-                try:
-                    time.sleep(self.screenshot_delay)
-                    location = pyautogui.locateOnScreen(image_path, confidence=current_confidence)
-                    if location:
-                        center = pyautogui.center(location)
-                        logger.info(f"Hình ảnh '{os.path.basename(image_path)}' tìm thấy tại {center}. Đang nhấp{' hai lần' if double_click else ''}...")
-                        if double_click:
-                            pyautogui.doubleClick(center.x, center.y, interval=0.1)
-                        else:
-                            pyautogui.click(center.x, center.y, button=button)
-                        time.sleep(self.action_delay)
-                        return True
-                except pyautogui.ImageNotFoundException:
-                    logger.debug(f"Không tìm thấy hình ảnh '{os.path.basename(image_path)}', đang thử tiếp nếu có sẵn.")
-                    pass 
-                except Exception as e:
-                    logger.error(f"Lỗi bất ngờ với hình ảnh '{os.path.basename(image_path)}': {e}", exc_info=True)
-                    pass
-            time.sleep(0.5) 
-        logger.warning(f"Không tìm thấy bất kỳ hình ảnh nào cho '{image_name_key}' sau {timeout} giây.")
-        return False
 
     def type_text(self, text, image_name_key=None, timeout=10, select_all_first=False):
         if image_name_key:
@@ -319,11 +293,9 @@ class ACSAutomation:
         return None
 
     def increment_excel_row_index(self):
-        
         if not self.enable_auto_increment:
             return False
         
-
         if self.excel_data and self.current_excel_row_index < len(self.excel_data):
             self.current_excel_row_index += 1
             logger.info(f"Excel đã tăng 1 hàng {self.current_excel_row_index}")
@@ -430,63 +402,30 @@ class ACSAutomation:
 
     def chon_thiet_bi(self, device_type_name, device_location):
         logger.info(f"Đang xử lý {device_type_name} tại {pyautogui.center(device_location)}")
-
         center = pyautogui.center(device_location)
-        logger.info(f"Nhấp đúp {device_type_name} tại {center}...")
         pyautogui.doubleClick(center.x, center.y, interval=0.1)
         time.sleep(self.action_delay)
         
-
     def chon_thiet_bi_va_ghi(self, device_type_name, device_location, address):
         logger.info(f"Đang xử lý {device_type_name} tại {pyautogui.center(device_location)} với địa chỉ {address}")
-
         center = pyautogui.center(device_location)
-        logger.info(f"Nhấp đúp {device_type_name} tại {center}...")
         pyautogui.doubleClick(center.x, center.y, interval=0.1)
         time.sleep(self.action_delay)
-        
         time.sleep(1) 
-
         if not self.type_text(address, image_name_key='dmx_slave_address_field', select_all_first=True, timeout=10):
             return f"Thất bại: Không thể gõ Địa chỉ DMX Slave cho {device_type_name}."
-        
         if not self.find_and_click('set_dmx_slave_address_btn', timeout=10):
             return f"Thất bại: Không thể tìm thấy nút 'Ghi địa chỉ DMX slave' cho {device_type_name}."
-
         logger.info(f"Ghi địa chỉ {device_type_name} thành công.")
         return f"Ghi địa chỉ {device_type_name} thành công."
 
     def find(self, image_name_key, timeout=30, confidence_override=None):
-        image_paths = self._get_image_paths_list(image_name_key)
-        if not image_paths:
-            return False
-
-        current_confidence = confidence_override if confidence_override is not None else self.confidence
-        logger.info(f"Đang tìm kiếm bất kỳ hình ảnh nào trong {image_name_key} (thời gian chờ={timeout}s, độ tin cậy={current_confidence})")
-        start_time = time.time()
-        while time.time() - start_time < timeout:
-            for image_path in image_paths:
-                try:
-                    time.sleep(self.screenshot_delay)
-                    location = pyautogui.locateOnScreen(image_path, confidence=current_confidence)
-                    if location:
-                        logger.info(f"Hình ảnh '{os.path.basename(image_path)}' đã tìm thấy.")
-                        return True
-                except pyautogui.ImageNotFoundException:
-                    logger.debug(f"Không tìm thấy hình ảnh '{os.path.basename(image_path)}', đang thử tiếp nếu có sẵn.")
-                    pass
-                except Exception as e:
-                    logger.error(f"Lỗi bất ngờ với hình ảnh '{os.path.basename(image_path)}': {e}", exc_info=True)
-                    pass
-            time.sleep(0.5)
-        logger.warning(f"Không tìm thấy bất kỳ hình ảnh nào cho '{image_name_key}' sau {timeout} giây.")
-        return False
+        return self.wait_for_image(image_name_key, timeout, confidence_override)
 
     def drag_slider(self, slider_image_key, offset_x, offset_y, duration=1):
         image_paths = self._get_image_paths_list(slider_image_key)
         if not image_paths:
             return False
-
         logger.info(f"Đang kéo thanh trượt '{slider_image_key}'...")
         try:
             location = self.locate_image(image_paths, confidence_override=0.8, timeout=10)
@@ -504,29 +443,7 @@ class ACSAutomation:
             return False
 
     def is_slider_already_moved(self, slider_moved_image_key, timeout=5, confidence_override=None):
-        image_paths = self._get_image_paths_list(slider_moved_image_key)
-        if not image_paths:
-            return False
-
-        current_confidence = confidence_override if confidence_override is not None else self.confidence
-        logger.info(f"Kiểm tra xem thanh trượt đã được di chuyển chưa (timeout={timeout}s, confidence={current_confidence})...")
-        start_time = time.time()
-        while time.time() - start_time < timeout:
-            for image_path in image_paths:
-                try:
-                    time.sleep(self.screenshot_delay)
-                    location = pyautogui.locateOnScreen(image_path, confidence=current_confidence)
-                    if location:
-                        logger.info(f"Thanh trượt đã được di chuyển (tìm thấy hình ảnh '{os.path.basename(image_path)}').")
-                        return True
-                except pyautogui.ImageNotFoundException:
-                    pass
-                except Exception as e:
-                    logger.error(f"Lỗi khi kiểm tra thanh trượt đã được di chuyển chưa (hình ảnh '{os.path.basename(image_path)}'): {e}")
-                    return False
-            time.sleep(0.5)
-        logger.info("Thanh trượt chưa được di chuyển.")
-        return False
+        return self.wait_for_image(slider_moved_image_key, timeout, confidence_override)
 
     def locate_image(self, image_paths, confidence_override=None, timeout=30):
         current_confidence = confidence_override if confidence_override is not None else self.confidence
@@ -551,7 +468,6 @@ class ACSAutomation:
         logger.info(f"Đang chọn thiết bị: {device_type}")
         if not self.find_and_click('device_type_field', timeout=10):
             return f"Thất bại: không thể tìm thấy 'Device type'."
-
         device_type_map = {
             "AFVarionaut Pump": "afvarionaut_pump_type_btn",
             "Submersible Pump": "submersible_pump_type_btn",
@@ -559,124 +475,90 @@ class ACSAutomation:
             "SingleColor Led": "singlecolor_led_type_btn",
             "Dmx2Vfd Converter": "dmx2vfd_converter_type_btn",
         }
-
         if device_type in device_type_map:
             image_key = device_type_map[device_type]
             if not self.find_and_click(image_key, timeout=10):
                 return f"Thất bại: không thể tìm thấy nút '{device_type}'."
         else:
             return f"Thất bại: Invalid device type: {device_type}"
-
         return f"Device type selected: {device_type}"
     
     def _select_device_power(self, device_power):
         logger.info(f"Đang chọn công suất: {device_power}")
         if not self.find_and_click('device_power_field', timeout=10):
             return f"Thất bại: không thể tìm thấy 'Device power'."
-
         device_power_map = {
-            "60": "60w_power_btn",
-            "100": "100w_power_btn",
-            "140": "140w_power_btn",
-            "160": "160w_power_btn",
-            "120": "120w_power_btn",
-            "150": "150w_power_btn",
-            "200": "200w_power_btn",
-            "18": "18w_power_btn",
-            "36": "36w_power_btn",
-            "6": "6w_power_btn",
-            "12": "12w_power_btn",
-            "Unspecified": "unspecified_power_btn",
+            "60": "60w_power_btn", "100": "100w_power_btn", "140": "140w_power_btn",
+            "160": "160w_power_btn", "120": "120w_power_btn", "150": "150w_power_btn",
+            "200": "200w_power_btn", "18": "18w_power_btn", "36": "36w_power_btn",
+            "6": "6w_power_btn", "12": "12w_power_btn", "Unspecified": "unspecified_power_btn",
         }
-
         if device_power in device_power_map:
             image_key = device_power_map[device_power]
             if not self.find_and_click(image_key, timeout=10):
                 return f"Thất bại: không thể tìm thấy '{device_power}'."
         else:
             return f"Thất bại: Invalid device power: {device_power}"
-
         return f"Device power selected: {device_power}"
+
+    def click_acs_device_configuration(self, x, y):
+        target_title = "ACS Device Configuration - Version 1.5.0"
+        try:
+            windows = pyautogui.getWindowsWithTitle(target_title)
+            if not windows:
+                logger.warning(f"Không tìm thấy cửa sổ: '{target_title}'")
+                return
+            window = windows[0]
+            if window.isMinimized:
+                window.restore()
+            abs_x = window.left + x
+            abs_y = window.top + y
+            try:
+                window.activate()
+            except Exception:
+                pass
+            logger.info(f"Đang click tại ({x}, {y}) trên cửa sổ ACS...")
+            pyautogui.click(abs_x, abs_y)
+        except Exception as e:
+            logger.error(f"Lỗi khi click tọa độ: {e}")
+    
 
 acs_auto = ACSAutomation()
 
-
-class AutoACSTool:
-    def __init__(self, master):
-        self.master = master
-        master.title(APP_NAME)
-        master.geometry("500x600")
-        master.resizable(False, False)
-        master.attributes("-topmost", True)
-        master.bind("<Map>", lambda e: self.master.after(50, lambda: (self.master.attributes("-topmost", True), self.master.lift())))
-
+class AutoACSTool(ctk.CTk):
+    def __init__(self):
+        super().__init__()
+        self.title(APP_NAME)
+        self.geometry("500x650")
+        self.resizable(False, False)
+        self.attributes("-topmost", True)
         
+        self.bind("<Map>", lambda e: self.after(50, lambda: (self.attributes("-topmost", True), self.lift())))
+
         keyboard.add_hotkey('esc', self.stop_all_automation)
-        
-        
         keyboard.add_hotkey('f1', lambda: self.execute_category_script("uid_col1", self.get_uid_col1_context))
-        
         keyboard.add_hotkey('f2', lambda: self.execute_category_script("uid_col2", self.get_uid_col2_context))
-        
         keyboard.add_hotkey('f3', lambda: self.execute_category_script("address", self.get_excel_context))
-        
         keyboard.add_hotkey('f4', lambda: self.execute_category_script("test", self.get_excel_context))
-        
         keyboard.add_hotkey('f5', lambda: self.execute_category_script("address_test", self.get_excel_context))
+        keyboard.add_hotkey('f7', lambda: self.click_acs_device_configuration(520, 220))
+        keyboard.add_hotkey('f8', lambda: self.click_acs_device_configuration(560, 220))
+        keyboard.add_hotkey('f9', lambda: self.click_acs_device_configuration(610, 220))
+        keyboard.add_hotkey('f10', lambda: self.click_acs_device_configuration(650, 220))
 
-        self.dark_mode_colors = {
-            'bg': '#1e1e1e',          
-            'fg': '#e0e0e0',          
-            'button_bg': '#333333',   
-            'button_fg': '#ffffff',   
-            'entry_bg': '#2a2a2a',    
-            'entry_fg': '#ffffff',    
-            'frame_bg': '#282828',    
-            'select_bg': '#5c5c5c',   
-            'select_fg': '#ffffff',   
-            'border': '#505050'       
-        }
-
-        self.master.overrideredirect(True) 
+        self.overrideredirect(True) 
         self.create_custom_title_bar()
-        master.configure(bg=self.dark_mode_colors['bg'])
+        self.configure(fg_color=DARK_BG)
 
+        self.tabview = ctk.CTkTabview(self, width=480, height=580, fg_color=FRAME_BG, segmented_button_selected_color=ACCENT_COLOR, segmented_button_selected_hover_color=HOVER_COLOR) 
+        self.tabview.pack(fill="both", expand=True, padx=5, pady=5)
         
-        self.style = ttk.Style()
-        self.style.theme_use('clam') 
-        self.style.configure('.', font=('ZFVCutiegirl', 10), background=self.dark_mode_colors['bg'], foreground=self.dark_mode_colors['fg'])
-        self.style.configure('TLabel', background=self.dark_mode_colors['frame_bg'], foreground=self.dark_mode_colors['fg'], font=('ZFVCutiegirl', 10))
-        self.style.configure('TButton', background=self.dark_mode_colors['button_bg'], foreground=self.dark_mode_colors['button_fg'], font=('ZFVCutiegirl', 11), borderwidth=1, relief="flat")
-        self.style.map('TButton', background=[('active', self.dark_mode_colors['select_bg'])], foreground=[('active', self.dark_mode_colors['fg'])])
-        self.style.configure('TFrame', background=self.dark_mode_colors['frame_bg'])
-        self.style.configure('TLabelframe', background=self.dark_mode_colors['frame_bg'], foreground=self.dark_mode_colors['fg'], relief='solid', borderwidth=1, bordercolor=self.dark_mode_colors['border'])
-        self.style.configure('TLabelframe.Label', background=self.dark_mode_colors['frame_bg'], foreground=self.dark_mode_colors['fg'], font=('ZFVCutiegirl', 10, 'bold'))
-        self.style.configure('TNotebook', background=self.dark_mode_colors['bg'], borderwidth=0)
-        self.style.configure('TNotebook.Tab', background=self.dark_mode_colors['button_bg'], foreground=self.dark_mode_colors['fg'], font=('ZFVCutiegirl', 10), padding=[10, 5])
-        self.style.map('TNotebook.Tab', background=[('selected', self.dark_mode_colors['frame_bg']), ('active', self.dark_mode_colors['select_bg'])], foreground=[('selected', self.dark_mode_colors['fg']), ('active', self.dark_mode_colors['fg'])])
-        self.style.configure('TEntry', fieldbackground=self.dark_mode_colors['entry_bg'], foreground=self.dark_mode_colors['entry_fg'], insertcolor=self.dark_mode_colors['fg'], borderwidth=1, relief="solid", bordercolor=self.dark_mode_colors['border'])
-        self.style.configure('TCombobox', fieldbackground=self.dark_mode_colors['entry_bg'], foreground=self.dark_mode_colors['entry_fg'], selectbackground=self.dark_mode_colors['select_bg'], selectforeground=self.dark_mode_colors['select_fg'], background=self.dark_mode_colors['button_bg'], arrowcolor=self.dark_mode_colors['fg'], borderwidth=1, relief="solid", bordercolor=self.dark_mode_colors['border'])
-        self.style.map('TCombobox', fieldbackground=[('readonly', self.dark_mode_colors['entry_bg'])], foreground=[('readonly', self.dark_mode_colors['entry_fg'])], background=[('active', self.dark_mode_colors['select_bg'])], arrowcolor=[('active', self.dark_mode_colors['fg'])])
-        self.style.configure('TCombobox.Listbox', background=self.dark_mode_colors['entry_bg'], foreground=self.dark_mode_colors['entry_fg'], selectbackground=self.dark_mode_colors['select_bg'], selectforeground=self.dark_mode_colors['select_fg'], highlightbackground=self.dark_mode_colors['select_bg'], highlightcolor=self.dark_mode_colors['select_bg'], borderwidth=0, relief="flat")
-        self.style.configure('Vertical.TScrollbar', background=self.dark_mode_colors['button_bg'], troughcolor=self.dark_mode_colors['frame_bg'], foreground=self.dark_mode_colors['fg'], arrowcolor=self.dark_mode_colors['fg'], borderwidth=0, relief="flat")
-        self.style.map('Vertical.TScrollbar', background=[('active', self.dark_mode_colors['select_bg'])], arrowcolor=[('active', self.dark_mode_colors['fg'])])
-        self.style.configure('Horizontal.TScrollbar', background=self.dark_mode_colors['button_bg'], troughcolor=self.dark_mode_colors['frame_bg'], foreground=self.dark_mode_colors['fg'], arrowcolor=self.dark_mode_colors['fg'], borderwidth=0, relief="flat")
-        self.style.map('Horizontal.TScrollbar', background=[('active', self.dark_mode_colors['select_bg'])], arrowcolor=[('active', self.dark_mode_colors['fg'])])
-        self.style.configure('TSeparator', background=self.dark_mode_colors['border'])
-        self.style.configure('Large.TLabel', font=('ZFVCutiegirl', 24, 'bold'), background=self.dark_mode_colors['frame_bg'], foreground=self.dark_mode_colors['fg'])
-
+        self.tabview._segmented_button.configure(font=(MAIN_FONT, 12, "bold"))
         
-        self.style.configure('Script.TCheckbutton', background=self.dark_mode_colors['frame_bg'], foreground=self.dark_mode_colors['fg'], font=('ZFVCutiegirl', 10), selectcolor=self.dark_mode_colors['frame_bg'])
-        self.style.map('Script.TCheckbutton',
-            background=[('active', self.dark_mode_colors['select_bg']), ('selected', self.dark_mode_colors['frame_bg'])],
-            foreground=[('active', self.dark_mode_colors['fg']), ('selected', self.dark_mode_colors['fg'])],
-        )
-        
-        self.style.configure('TCheckbutton', background=self.dark_mode_colors['frame_bg'], foreground=self.dark_mode_colors['fg'], selectcolor=self.dark_mode_colors['frame_bg'])
-        self.style.map('TCheckbutton', background=[('active', self.dark_mode_colors['select_bg'])], foreground=[('active', self.dark_mode_colors['fg'])])
-
-        self.notebook = ttk.Notebook(master)
-        self.notebook.pack(fill=tk.BOTH, expand=True, padx=5, pady=5)
+        self.tabview.add("ACS Device Manager")
+        self.tabview.add("ACS Device Configuration")
+        self.tabview.add("Cài đặt")
+        self.tabview.add("Suki UwU")
 
         self.create_acs_device_manager_tab()
         self.create_acs_device_configuration_tab()
@@ -686,9 +568,28 @@ class AutoACSTool:
         logger.info("Sẵn sàng hoạt động.")
         self.update_excel_status()
 
+    def click_acs_device_configuration(self, x, y):
+        target_title = "ACS Device Configuration - Version 1.5.0"
+        try:
+            windows = pyautogui.getWindowsWithTitle(target_title)
+            if not windows:
+                logger.warning(f"Không tìm thấy cửa sổ: '{target_title}'")
+                return
+            window = windows[0]
+            if window.isMinimized:
+                window.restore()
+            abs_x = window.left + x
+            abs_y = window.top + y
+            try:
+                window.activate()
+            except Exception:
+                pass
+            logger.info(f"Đang click tại ({x}, {y}) trên cửa sổ ACS...")
+            pyautogui.click(abs_x, abs_y)
+        except Exception as e:
+            logger.error(f"Lỗi khi click tọa độ F7-F10: {e}")
     
     def get_excel_context(self):
-        """Lấy dữ liệu Excel để ném vào script"""
         if not acs_auto.excel_data:
             logger.warning("Vui lòng nhập file Excel trước.")
             return None
@@ -705,30 +606,25 @@ class AutoACSTool:
         }
 
     def get_uid_col1_context(self):
-        """Lấy dữ liệu từ Dropdown Cột 1"""
         return {
             'selected_device_type': self.device_type_var_col1.get(),
             'selected_device_power': self.device_power_var_col1.get()
         }
 
     def get_uid_col2_context(self):
-        """Lấy dữ liệu từ Dropdown Cột 2"""
         return {
             'selected_device_type': self.device_type_var_col2.get(),
             'selected_device_power': self.device_power_var_col2.get()
         }
 
-    
     def execute_category_script(self, category, context_func=None):
         if hasattr(self, 'automation_thread') and self.automation_thread.is_alive():
             logger.warning("Một tác vụ đang chạy. Vui lòng đợi.")
             return
 
-        
         active_script = script_manager.get_active_script(category)
-        
         if not active_script:
-            tk.messagebox.showinfo("Thông báo", f"Chưa có kịch bản nào được chọn (Active) cho '{category}'. Hãy bấm nút 📄 để chọn.")
+            messagebox.showinfo("Thông báo", f"Chưa có kịch bản nào được chọn (Active) cho '{category}'. Hãy bấm nút 📄 để chọn.")
             return
 
         steps = active_script['steps']
@@ -741,7 +637,10 @@ class AutoACSTool:
                 return
 
         logger.info(f"🚀 Đang chạy kịch bản: {script_name}")
-        self.set_buttons_state(tk.DISABLED)
+        self.set_buttons_state("disabled")
+
+        self.player_manager.start()
+        self.player_config.start()    
 
         self.automation_thread = threading.Thread(
             target=self._run_dynamic_script, 
@@ -752,7 +651,6 @@ class AutoACSTool:
     def _run_dynamic_script(self, steps, extra_context):
         results = []
         try:
-            
             context = {
                 'acs_auto': acs_auto,
                 'logger': logger,
@@ -764,13 +662,10 @@ class AutoACSTool:
             }
 
             for i, step in enumerate(steps):
-                
                 if acs_auto.stop_requested:
                     logger.warning("🛑 Đã dừng kịch bản.")
                     results.append("Đã dừng bởi người dùng.")
                     break
-
-                
                 if context.get('script_stop', False):
                     logger.info("⏹ Kịch bản dừng lại do lệnh 'script_stop = True'.")
                     break
@@ -781,18 +676,13 @@ class AutoACSTool:
                 logger.info(f"▶ Step: {step_name}")
                 try:
                     exec(code_str, globals(), context)
-                    
-                    
                     if context.get('script_stop', False):
                         continue 
-                        
                 except Exception as e:
                     err_msg = f"❌ Lỗi '{step_name}': {e}"
                     logger.error(err_msg)
                     results.append(err_msg)
-                    
-                    
-            
+
             final_msg = " | ".join([str(r) for r in results])
             if final_msg:
                 logger.info(f"Kết quả: {final_msg}")
@@ -800,107 +690,86 @@ class AutoACSTool:
         except Exception as e:
             logger.error(f"Lỗi hệ thống script: {e}", exc_info=True)
         finally:
-            self.master.after(0, lambda: self.set_buttons_state(tk.NORMAL))
-            self.master.after(0, self.update_excel_status)
-            self.master.after(0, lambda: self.update_entry_fields(acs_auto.current_excel_row_index))
-
-    
-    def clear_combobox_selection(self, event):
-        cb = event.widget
-        cb.selection_clear()
-        cb.icursor(tk.END)
+            self.after(0, self.player_manager.stop)
+            self.after(0, self.player_config.stop)
+            self.after(0, lambda: self.set_buttons_state("normal"))
+            self.after(0, self.update_excel_status)
+            self.after(0, lambda: self.update_entry_fields(acs_auto.current_excel_row_index))
 
     def create_acs_device_manager_tab(self):
-        tab = ttk.Frame(self.notebook, padding="20")
-        tab.configure(style='TFrame')
-        self.notebook.add(tab, text="ACS Device Manager")
+        tab = self.tabview.tab("ACS Device Manager")
 
-        cols_frame = ttk.Frame(tab)
-        cols_frame.pack(fill=tk.BOTH, padx=5, pady=5, expand=True)
+        cols_frame = ctk.CTkFrame(tab, fg_color="transparent")
+        cols_frame.pack(fill="both", padx=5, pady=5, expand=True)
 
-        
-        left_col = ttk.Frame(cols_frame)
-        left_col.pack(side=tk.LEFT, fill=tk.BOTH, expand=True, padx=(0,5))
+        left_col = ctk.CTkFrame(cols_frame, fg_color="transparent")
+        left_col.pack(side="left", fill="both", expand=True, padx=(0,5))
 
+        btn_frame_1 = ctk.CTkFrame(left_col, fg_color="transparent")
+        btn_frame_1.pack(pady=10, fill="x", padx=5)
         
-        btn_frame_1 = ttk.Frame(left_col)
-        btn_frame_1.pack(pady=10, fill=tk.X, padx=5)
-        
-        self.btn_uid_col1 = ttk.Button(btn_frame_1, text="Ghi UID (F1)", 
+        self.btn_uid_col1 = ctk.CTkButton(btn_frame_1, text="Ghi UID (F1)", fg_color=BUTTON_BG, hover_color=HOVER_COLOR, font=(MAIN_FONT, 14, "bold"),
             command=lambda: self.execute_category_script("uid_col1", self.get_uid_col1_context))
-        self.btn_uid_col1.configure(style='TButton')
-        self.btn_uid_col1.pack(side=tk.LEFT, fill=tk.X, expand=True)
+        self.btn_uid_col1.pack(side="left", fill="x", expand=True)
         
-        btn_script_1 = ttk.Button(btn_frame_1, text="📄", width=3, 
-            command=lambda: ScriptSelector(self.master, "uid_col1", lambda: None))
-        btn_script_1.configure(style='TButton')
-        btn_script_1.pack(side=tk.LEFT, padx=(5,0))
+        btn_script_1 = ctk.CTkButton(btn_frame_1, text="📄", width=40, fg_color=BUTTON_BG, hover_color=HOVER_COLOR, font=(MAIN_FONT, 14),
+            command=lambda: ScriptSelector(self, "uid_col1", lambda: None))
+        btn_script_1.pack(side="left", padx=(5,0))
 
-        
-        device_type_frame_1 = ttk.LabelFrame(left_col, text="Device Type", padding="10")
-        device_type_frame_1.configure(style='TLabelframe')
-        device_type_frame_1.pack(fill=tk.X, padx=5, pady=5)
+        device_type_frame_1 = ctk.CTkFrame(left_col)
+        device_type_frame_1.pack(fill="x", padx=5, pady=5)
+        ctk.CTkLabel(device_type_frame_1, text="Device Type", font=(MAIN_FONT, 12, "bold")).pack(anchor="w", padx=10, pady=(5,0))
 
-        self.device_type_var_col1 = tk.StringVar(value="AFVarionaut Pump")
+        self.device_type_var_col1 = ctk.StringVar(value="AFVarionaut Pump")
         device_type_options = ["AFVarionaut Pump", "Submersible Pump", "Tricolor Led", "SingleColor Led", "Dmx2Vfd Converter"]
-        self.device_type_dropdown_col1 = ttk.Combobox(device_type_frame_1, textvariable=self.device_type_var_col1, values=device_type_options, state="readonly")
-        self.device_type_dropdown_col1.configure(style='TCombobox')
-        self.device_type_dropdown_col1.pack(pady=5, fill=tk.X, padx=5)
-        self.device_type_dropdown_col1.bind("<<ComboboxSelected>>", lambda e: (self.update_device_power_options_col(1), self.clear_combobox_selection(e)))
+        self.device_type_dropdown_col1 = ctk.CTkComboBox(device_type_frame_1, variable=self.device_type_var_col1, values=device_type_options, command=lambda e: self.update_device_power_options_col(1), font=(MAIN_FONT, 12), dropdown_font=(MAIN_FONT, 12))
+        self.device_type_dropdown_col1.pack(pady=5, fill="x", padx=10)
 
-        device_power_frame_1 = ttk.LabelFrame(left_col, text="Device Power (W)", padding="10")
-        device_power_frame_1.configure(style='TLabelframe')
-        device_power_frame_1.pack(fill=tk.X, padx=5, pady=5)
+        device_power_frame_1 = ctk.CTkFrame(left_col)
+        device_power_frame_1.pack(fill="x", padx=5, pady=5)
+        ctk.CTkLabel(device_power_frame_1, text="Device Power (W)", font=(MAIN_FONT, 12, "bold")).pack(anchor="w", padx=10, pady=(5,0))
 
-        self.device_power_var_col1 = tk.StringVar(value="60")
+        self.device_power_var_col1 = ctk.StringVar(value="60")
         self.device_power_options_col1 = ["60", "100", "140", "160"]
-        self.device_power_dropdown_col1 = ttk.Combobox(device_power_frame_1, textvariable=self.device_power_var_col1, values=self.device_power_options_col1, state="readonly")
-        self.device_power_dropdown_col1.configure(style='TCombobox')
-        self.device_power_dropdown_col1.bind("<<ComboboxSelected>>", lambda e: self.clear_combobox_selection(e))
-        self.device_power_dropdown_col1.pack(pady=5, fill=tk.X, padx=5)
+        self.device_power_dropdown_col1 = ctk.CTkComboBox(device_power_frame_1, variable=self.device_power_var_col1, values=self.device_power_options_col1, font=(MAIN_FONT, 12), dropdown_font=(MAIN_FONT, 12))
+        self.device_power_dropdown_col1.pack(pady=5, fill="x", padx=10)
 
-        
-        right_col = ttk.Frame(cols_frame)
-        right_col.pack(side=tk.LEFT, fill=tk.BOTH, expand=True, padx=(5,0))
+        right_col = ctk.CTkFrame(cols_frame, fg_color="transparent")
+        right_col.pack(side="left", fill="both", expand=True, padx=(5,0))
 
-        
-        btn_frame_2 = ttk.Frame(right_col)
-        btn_frame_2.pack(pady=10, fill=tk.X, padx=5)
-        
-        self.btn_uid_col2 = ttk.Button(btn_frame_2, text="Ghi UID (F2)", 
+        btn_frame_2 = ctk.CTkFrame(right_col, fg_color="transparent")
+        btn_frame_2.pack(pady=10, fill="x", padx=5)
+
+        self.btn_uid_col2 = ctk.CTkButton(btn_frame_2, text="Ghi UID (F2)", fg_color=BUTTON_BG, hover_color=HOVER_COLOR, font=(MAIN_FONT, 14, "bold"),
             command=lambda: self.execute_category_script("uid_col2", self.get_uid_col2_context))
-        self.btn_uid_col2.configure(style='TButton')
-        self.btn_uid_col2.pack(side=tk.LEFT, fill=tk.X, expand=True)
+        self.btn_uid_col2.pack(side="left", fill="x", expand=True)
 
-        btn_script_2 = ttk.Button(btn_frame_2, text="📄", width=3, 
-            command=lambda: ScriptSelector(self.master, "uid_col2", lambda: None))
-        btn_script_2.configure(style='TButton')
-        btn_script_2.pack(side=tk.LEFT, padx=(5,0))
+        btn_script_2 = ctk.CTkButton(btn_frame_2, text="📄", width=40, fg_color=BUTTON_BG, hover_color=HOVER_COLOR, font=(MAIN_FONT, 14),
+            command=lambda: ScriptSelector(self, "uid_col2", lambda: None))
+        btn_script_2.pack(side="left", padx=(5,0))
 
-        
-        device_type_frame_2 = ttk.LabelFrame(right_col, text="Device Type", padding="10")
-        device_type_frame_2.configure(style='TLabelframe')
-        device_type_frame_2.pack(fill=tk.X, padx=5, pady=5)
+        device_type_frame_2 = ctk.CTkFrame(right_col)
+        device_type_frame_2.pack(fill="x", padx=5, pady=5)
+        ctk.CTkLabel(device_type_frame_2, text="Device Type", font=(MAIN_FONT, 12, "bold")).pack(anchor="w", padx=10, pady=(5,0))
 
-        self.device_type_var_col2 = tk.StringVar(value="AFVarionaut Pump")
-        self.device_type_dropdown_col2 = ttk.Combobox(device_type_frame_2, textvariable=self.device_type_var_col2, values=device_type_options, state="readonly")
-        self.device_type_dropdown_col2.configure(style='TCombobox')
-        self.device_type_dropdown_col2.pack(pady=5, fill=tk.X, padx=5)
-        self.device_type_dropdown_col2.bind("<<ComboboxSelected>>", lambda e: (self.update_device_power_options_col(2), self.clear_combobox_selection(e)))
+        self.device_type_var_col2 = ctk.StringVar(value="AFVarionaut Pump")
+        self.device_type_dropdown_col2 = ctk.CTkComboBox(device_type_frame_2, variable=self.device_type_var_col2, values=device_type_options, command=lambda e: self.update_device_power_options_col(2), font=(MAIN_FONT, 12), dropdown_font=(MAIN_FONT, 12))
+        self.device_type_dropdown_col2.pack(pady=5, fill="x", padx=10)
 
-        device_power_frame_2 = ttk.LabelFrame(right_col, text="Device Power (W)", padding="10")
-        device_power_frame_2.configure(style='TLabelframe')
-        device_power_frame_2.pack(fill=tk.X, padx=5, pady=5)
+        device_power_frame_2 = ctk.CTkFrame(right_col)
+        device_power_frame_2.pack(fill="x", padx=5, pady=5)
+        ctk.CTkLabel(device_power_frame_2, text="Device Power (W)", font=(MAIN_FONT, 12, "bold")).pack(anchor="w", padx=10, pady=(5,0))
 
-        self.device_power_var_col2 = tk.StringVar(value="60")
+        self.device_power_var_col2 = ctk.StringVar(value="60")
         self.device_power_options_col2 = ["60", "100", "140", "160"]
-        self.device_power_dropdown_col2 = ttk.Combobox(device_power_frame_2, textvariable=self.device_power_var_col2, values=self.device_power_options_col2, state="readonly")
-        self.device_power_dropdown_col2.configure(style='TCombobox')
-        self.device_power_dropdown_col2.bind("<<ComboboxSelected>>", lambda e: self.clear_combobox_selection(e))
-        self.device_power_dropdown_col2.pack(pady=5, fill=tk.X, padx=5)
+        self.device_power_dropdown_col2 = ctk.CTkComboBox(device_power_frame_2, variable=self.device_power_var_col2, values=self.device_power_options_col2, font=(MAIN_FONT, 12), dropdown_font=(MAIN_FONT, 12))
+        self.device_power_dropdown_col2.pack(pady=5, fill="x", padx=10)
 
         self.update_device_power_options_col(1)
         self.update_device_power_options_col(2)
+        
+        video_path = os.path.join(acs_auto.image_folder, "Suki.mp4")
+        self.player_manager = VideoPlayer(tab, video_path)
 
     def update_device_power_options_col(self, col):
         if col == 1:
@@ -912,7 +781,7 @@ class AutoACSTool:
             elif selected == "Dmx2Vfd Converter": options = ["Unspecified"]
             else: options = []
             self.device_power_options_col1 = options
-            self.device_power_dropdown_col1['values'] = options
+            self.device_power_dropdown_col1.configure(values=options)
             if self.device_power_var_col1.get() not in options and options:
                 self.device_power_var_col1.set(options[0])
         else:
@@ -924,222 +793,176 @@ class AutoACSTool:
             elif selected == "Dmx2Vfd Converter": options = ["Unspecified"]
             else: options = []
             self.device_power_options_col2 = options
-            self.device_power_dropdown_col2['values'] = options
+            self.device_power_dropdown_col2.configure(values=options)
             if self.device_power_var_col2.get() not in options and options:
                 self.device_power_var_col2.set(options[0])
 
     def create_acs_device_configuration_tab(self):
-        tab = ttk.Frame(self.notebook, padding="20")
-        tab.configure(style='TFrame')
-        self.notebook.add(tab, text="ACS Device Configuration")
+        tab = self.tabview.tab("ACS Device Configuration")
 
-        
         def create_config_btn_row(parent, btn_text, script_cat, context_func):
-            row_frame = ttk.Frame(parent)
-            row_frame.pack(pady=5, fill=tk.X, padx=5)
+            row_frame = ctk.CTkFrame(parent, fg_color="transparent")
+            row_frame.pack(pady=5, fill="x", padx=5)
             
-            btn_run = ttk.Button(row_frame, text=btn_text, 
+            btn_run = ctk.CTkButton(row_frame, text=btn_text, fg_color=BUTTON_BG, hover_color=HOVER_COLOR, font=(MAIN_FONT, 14, "bold"),
                 command=lambda: self.execute_category_script(script_cat, context_func))
-            btn_run.configure(style='TButton')
-            btn_run.pack(side=tk.LEFT, fill=tk.X, expand=True)
-            
-            btn_script = ttk.Button(row_frame, text="📄", width=3, 
-                command=lambda: ScriptSelector(self.master, script_cat, lambda: None))
-            btn_script.configure(style='TButton')
-            btn_script.pack(side=tk.LEFT, padx=(5, 0))
+            btn_run.pack(side="left", fill="x", expand=True)
+
+            btn_script = ctk.CTkButton(row_frame, text="📄", width=40, fg_color=BUTTON_BG, hover_color=HOVER_COLOR, font=(MAIN_FONT, 14),
+                command=lambda: ScriptSelector(self, script_cat, lambda: None))
+            btn_script.pack(side="left", padx=(5, 0))
             return btn_run
 
         self.btn_ghi_dia_chi = create_config_btn_row(tab, "Ghi địa chỉ (F3)", "address", self.get_excel_context)
         self.btn_test = create_config_btn_row(tab, "Test (F4)", "test", self.get_excel_context)
         self.btn_ghi_dia_chi_test = create_config_btn_row(tab, "Ghi địa chỉ & Test (F5)", "address_test", self.get_excel_context)
 
-        ttk.Separator(tab, orient='horizontal').pack(fill=tk.X, pady=10, padx=5)
+        ctk.CTkProgressBar(tab, height=2, progress_color=ACCENT_COLOR).pack(fill="x", pady=10, padx=20)
 
-        excel_frame = ttk.LabelFrame(tab, text="Danh sách địa chỉ", padding="10")
-        excel_frame.configure(style='TLabelframe')
-        excel_frame.pack(fill=tk.X, padx=5, pady=5)
+        excel_frame = ctk.CTkFrame(tab)
+        excel_frame.pack(fill="x", padx=5, pady=5)
+        ctk.CTkLabel(excel_frame, text="Danh sách địa chỉ", font=(MAIN_FONT, 12, "bold")).pack(anchor="w", padx=10, pady=(5,0))
 
-        self.btn_import_excel = ttk.Button(excel_frame, text="Nhập File Excel (.xlsx)", command=self.import_excel_gui)
-        self.btn_import_excel.configure(style='TButton')
-        self.btn_import_excel.pack(pady=5, fill=tk.X, padx=5)
+        self.btn_import_excel = ctk.CTkButton(excel_frame, text="Nhập File Excel (.xlsx)", command=self.import_excel_gui, fg_color=BUTTON_BG, hover_color=HOVER_COLOR, font=(MAIN_FONT, 14, "bold"))
+        self.btn_import_excel.pack(pady=5, fill="x", padx=10)
 
-        self.excel_status_var = tk.StringVar()
-        self.excel_status_label = ttk.Label(excel_frame, textvariable=self.excel_status_var, wraplength=300)
-        self.excel_status_label.configure(style='TLabel', background=self.dark_mode_colors['frame_bg'])
-        self.excel_status_label.pack(pady=5, fill=tk.X, padx=5)
+        self.excel_status_var = ctk.StringVar()
+        self.excel_status_label = ctk.CTkLabel(excel_frame, textvariable=self.excel_status_var, wraplength=300, font=(MAIN_FONT, 12))
+        self.excel_status_label.pack(pady=5, fill="x", padx=10)
 
-        manual_input_frame = ttk.Frame(excel_frame, padding=5)
-        manual_input_frame.configure(style='TFrame')
-        manual_input_frame.pack(fill=tk.X)
+        manual_input_frame = ctk.CTkFrame(excel_frame, fg_color="transparent")
+        manual_input_frame.pack(fill="x", padx=5)
 
-        label_no = ttk.Label(manual_input_frame, text="No.")
-        label_no.configure(style='TLabel', background=self.dark_mode_colors['frame_bg'])
-        label_no.pack(side=tk.LEFT, padx=2)
-        self.no_entry = ttk.Entry(manual_input_frame, width=5)
-        self.no_entry.configure(style='TEntry')
-        self.no_entry.pack(side=tk.LEFT, padx=2)
-        self.no_entry.bind("<KeyRelease>", lambda event: self.schedule_update(delay=500, trigger="no"))
+        def create_entry(parent, label_text, trigger):
+            f = ctk.CTkFrame(parent, fg_color="transparent")
+            f.pack(side="left", padx=2)
+            ctk.CTkLabel(f, text=label_text, width=40, font=(MAIN_FONT, 12)).pack(side="left")
+            entry = ctk.CTkEntry(f, width=50, font=(MAIN_FONT, 12))
+            entry.pack(side="left")
+            entry.bind("<KeyRelease>", lambda event: self.schedule_update(delay=500, trigger=trigger))
+            return entry
 
-        label_pump = ttk.Label(manual_input_frame, text="Pump")
-        label_pump.configure(style='TLabel', background=self.dark_mode_colors['frame_bg'])
-        label_pump.pack(side=tk.LEFT, padx=2)
-        self.pump_entry = ttk.Entry(manual_input_frame, width=5)
-        self.pump_entry.configure(style='TEntry')
-        self.pump_entry.pack(side=tk.LEFT, padx=2)
-        self.pump_entry.bind("<KeyRelease>", lambda event: self.schedule_update(delay=500, trigger="pump"))
+        self.no_entry = create_entry(manual_input_frame, "No.", "no")
+        self.pump_entry = create_entry(manual_input_frame, "Pump", "pump")
+        self.led_entry = create_entry(manual_input_frame, "Led", "led")
+        self.dmx2vfd_entry = create_entry(manual_input_frame, "Dmx2Vfd", "dmx2vfd")
 
-        label_led = ttk.Label(manual_input_frame, text="Led")
-        label_led.configure(style='TLabel', background=self.dark_mode_colors['frame_bg'])
-        label_led.pack(side=tk.LEFT, padx=2)
-        self.led_entry = ttk.Entry(manual_input_frame, width=5)
-        self.led_entry.configure(style='TEntry')
-        self.led_entry.pack(side=tk.LEFT, padx=2)
-        self.led_entry.bind("<KeyRelease>", lambda event: self.schedule_update(delay=500, trigger="led"))
-
-        label_dmx2vfd = ttk.Label(manual_input_frame, text="Dmx2Vfd")
-        label_dmx2vfd.configure(style='TLabel', background=self.dark_mode_colors['frame_bg'])
-        label_dmx2vfd.pack(side=tk.LEFT, padx=2)
-        self.dmx2vfd_entry = ttk.Entry(manual_input_frame, width=5)
-        self.dmx2vfd_entry.configure(style='TEntry')
-        self.dmx2vfd_entry.pack(side=tk.LEFT, padx=2)
-        self.dmx2vfd_entry.bind("<KeyRelease>", lambda event: self.schedule_update(delay=500, trigger="dmx2vfd"))
-
-        self.auto_inc_var = tk.BooleanVar(value=True)
-
+        self.auto_inc_var = ctk.BooleanVar(value=True)
         
         def on_auto_inc_toggle():
             acs_auto.enable_auto_increment = self.auto_inc_var.get()
 
-        
-        chk_auto_inc = ttk.Checkbutton(
-            excel_frame, 
-            text="Tự động xuống hàng", 
-            variable=self.auto_inc_var,
-            command=on_auto_inc_toggle,
-            style='Script.TCheckbutton', 
-        )
-        
-
-        chk_auto_inc.pack(pady=(5, 0), anchor="w", padx=10)
-        
+        chk_auto_inc = ctk.CTkCheckBox(excel_frame, text="Tự động xuống hàng", variable=self.auto_inc_var, command=on_auto_inc_toggle, fg_color=ACCENT_COLOR, hover_color=HOVER_COLOR, font=(MAIN_FONT, 12, "bold"))
+        chk_auto_inc.pack(pady=(10, 10), anchor="w", padx=20)
         
         acs_auto.enable_auto_increment = True
-
+        video_path = os.path.join(acs_auto.image_folder, "Suki.mp4")
+        self.player_config = VideoPlayer(tab, video_path)
 
     def create_settings_tab(self):
-        tab = ttk.Frame(self.notebook, padding="10")
-        tab.configure(style='TFrame')
-        self.notebook.add(tab, text="Cài đặt")
+        tab = self.tabview.tab("Cài đặt")
 
+        tab.columnconfigure(0, weight=1)
+        tab.columnconfigure(1, weight=2)
+        tab.rowconfigure(0, weight=1)
+
+        left_frame = ctk.CTkFrame(tab)
+        left_frame.grid(row=0, column=0, sticky="nsew", padx=5, pady=5)
+
+        ctk.CTkLabel(left_frame, text="Danh sách Key:", font=(MAIN_FONT, 14, "bold")).pack(anchor="w", pady=5, padx=5)
+
+        listbox_container = ctk.CTkFrame(left_frame, fg_color="transparent")
+        listbox_container.pack(fill="both", expand=True, padx=5, pady=5)
         
-        paned = ttk.PanedWindow(tab, orient=tk.HORIZONTAL)
-        paned.pack(fill=tk.BOTH, expand=True, padx=5, pady=5)
-
+        self.keys_listbox = tk.Listbox(listbox_container, bg=FRAME_BG, fg="white", font=(MAIN_FONT, 10),
+                                       selectbackground=ACCENT_COLOR, bd=0, highlightthickness=0, exportselection=False)
+        self.keys_listbox.pack(side="left", fill="both", expand=True)
         
-        left_frame = ttk.Frame(paned, width=200)
-        paned.add(left_frame, weight=1)
-
-        ttk.Label(left_frame, text="Danh sách Key:", font=("ZFVCutiegirl", 11, "bold")).pack(anchor="w", pady=(0, 5))
-
-        
-        self.keys_listbox = tk.Listbox(left_frame, bg=self.dark_mode_colors['entry_bg'], fg="white", selectbackground=self.dark_mode_colors['select_bg'], bd=0, highlightthickness=1, exportselection=False)
-        self.keys_listbox.pack(side=tk.TOP, fill=tk.BOTH, expand=True)
+        scrollbar = ctk.CTkScrollbar(listbox_container, command=self.keys_listbox.yview)
+        scrollbar.pack(side="right", fill="y")
+        self.keys_listbox.config(yscrollcommand=scrollbar.set)
         self.keys_listbox.bind('<<ListboxSelect>>', self.on_key_selected)
 
+        btn_key_frame = ctk.CTkFrame(left_frame, fg_color="transparent")
+        btn_key_frame.pack(fill="x", pady=5, padx=5)
         
-        btn_key_frame = ttk.Frame(left_frame)
-        btn_key_frame.pack(fill=tk.X, pady=5)
-        
-        ttk.Button(btn_key_frame, text="➕", width=4, command=self.add_new_key).pack(side=tk.LEFT, padx=1)
-        ttk.Button(btn_key_frame, text="✎", width=4, command=self.rename_current_key).pack(side=tk.LEFT, padx=1)
-        ttk.Button(btn_key_frame, text="🗑", width=4, command=self.delete_current_key).pack(side=tk.LEFT, padx=1)
+        ctk.CTkButton(btn_key_frame, text="➕", width=40, command=self.add_new_key, fg_color=BUTTON_BG, hover_color=HOVER_COLOR, font=(MAIN_FONT, 12)).pack(side="left", padx=2)
+        ctk.CTkButton(btn_key_frame, text="✎", width=40, command=self.rename_current_key, fg_color=BUTTON_BG, hover_color=HOVER_COLOR, font=(MAIN_FONT, 12)).pack(side="left", padx=2)
+        ctk.CTkButton(btn_key_frame, text="🗑", width=40, command=self.delete_current_key, fg_color="#cc3333", hover_color="#aa2222", font=(MAIN_FONT, 12)).pack(side="left", padx=2)
 
-        
-        right_frame = ttk.Frame(paned)
-        paned.add(right_frame, weight=2)
+        right_frame = ctk.CTkFrame(tab)
+        right_frame.grid(row=0, column=1, sticky="nsew", padx=5, pady=5)
 
-        
-        self.detail_frame = ttk.LabelFrame(right_frame, text="Chi tiết hình ảnh", padding="10")
-        self.detail_frame.pack(fill=tk.BOTH, expand=True, padx=(5, 0))
+        ctk.CTkLabel(right_frame, text="Chi tiết cấu hình", font=(MAIN_FONT, 14, "bold")).pack(anchor="w", pady=5, padx=5)
 
-        
-        gen_frame = ttk.Frame(self.detail_frame)
-        gen_frame.pack(fill=tk.X, pady=(0, 10))
+        gen_frame = ctk.CTkFrame(right_frame, fg_color="transparent")
+        gen_frame.pack(fill="x", pady=(0, 10), padx=5)
         
         def add_gen_entry(parent, label, attr_name, default_val):
-            f = ttk.Frame(parent)
-            f.pack(fill=tk.X, pady=2)
-            ttk.Label(f, text=label, width=16).pack(side=tk.LEFT)
-            entry = ttk.Entry(f)
-            entry.pack(side=tk.LEFT, fill=tk.X, expand=True)
+            f = ctk.CTkFrame(parent, fg_color="transparent")
+            f.pack(fill="x", pady=2)
+            ctk.CTkLabel(f, text=label, width=120, anchor="w", font=(MAIN_FONT, 12)).pack(side="left")
+            entry = ctk.CTkEntry(f, font=(MAIN_FONT, 12))
+            entry.pack(side="left", fill="x", expand=True)
             entry.insert(0, default_val)
             setattr(self, attr_name, entry)
 
         add_gen_entry(gen_frame, "Delay chụp m.hình", "screenshot_delay_entry", config_manager.get('GENERAL', 'screenshot_delay_sec'))
         add_gen_entry(gen_frame, "Delay thao tác", "action_delay_entry", config_manager.get('GENERAL', 'action_delay_sec'))
         add_gen_entry(gen_frame, "Độ tin cậy (0 - 1)", "confidence_entry", config_manager.get('GENERAL', 'find_image_confidence'))
-        
-        ttk.Separator(self.detail_frame, orient='horizontal').pack(fill=tk.X, pady=10)
 
-        
-        self.lbl_current_key = ttk.Label(self.detail_frame, text="Đang chọn: (Chưa chọn)", font=("ZFVCutiegirl", 10, "bold"))
-        self.lbl_current_key.pack(anchor="w", pady=(0, 5))
+        ctk.CTkProgressBar(right_frame, height=2, progress_color=ACCENT_COLOR).pack(fill="x", pady=10, padx=10)
 
-        self.images_listbox = tk.Listbox(self.detail_frame, bg=self.dark_mode_colors['entry_bg'], fg="white", selectbackground=self.dark_mode_colors['select_bg'], bd=0, height=8, highlightthickness=1, exportselection=False)
-        self.images_listbox.pack(fill=tk.BOTH, expand=True)
+        self.lbl_current_key = ctk.CTkLabel(right_frame, text="Đang chọn: (Chưa chọn)", font=(MAIN_FONT, 12, "bold"))
+        self.lbl_current_key.pack(anchor="w", pady=(0, 5), padx=5)
 
-        btn_img_frame = ttk.Frame(self.detail_frame)
-        btn_img_frame.pack(fill=tk.X, pady=5)
+        img_listbox_container = ctk.CTkFrame(right_frame, fg_color="transparent")
+        img_listbox_container.pack(fill="both", expand=True, padx=5, pady=5)
+        
+        self.images_listbox = tk.Listbox(img_listbox_container, bg=FRAME_BG, fg="white", font=(MAIN_FONT, 10),
+                                         selectbackground=ACCENT_COLOR, bd=0, highlightthickness=0, exportselection=False)
+        self.images_listbox.pack(side="left", fill="both", expand=True)
+        img_scroll = ctk.CTkScrollbar(img_listbox_container, command=self.images_listbox.yview)
+        img_scroll.pack(side="right", fill="y")
+        self.images_listbox.config(yscrollcommand=img_scroll.set)
 
-        ttk.Button(btn_img_frame, text="📂 Thêm ảnh", command=self.add_image_to_key).pack(fill=tk.X, expand=True, side=tk.LEFT, padx=5)
-        ttk.Button(btn_img_frame, text="🗑 Xóa ảnh", command=self.remove_image_from_key).pack(fill=tk.X, expand=True, side=tk.LEFT, padx=5)
-        
-        
-        save_btn = ttk.Button(self.detail_frame, text="💾 LƯU TOÀN BỘ CÀI ĐẶT", command=self.save_settings_dynamic)
-        save_btn.pack(fill=tk.X, pady=10, padx=5)
+        btn_img_frame = ctk.CTkFrame(right_frame, fg_color="transparent")
+        btn_img_frame.pack(fill="x", pady=5, padx=5)
 
-        
+        ctk.CTkButton(btn_img_frame, text="📂 Thêm ảnh", command=self.add_image_to_key, fg_color=BUTTON_BG, hover_color=HOVER_COLOR, font=(MAIN_FONT, 14, "bold")).pack(fill="x", expand=True, side="left", padx=5)
+        ctk.CTkButton(btn_img_frame, text="🗑 Xóa ảnh", command=self.remove_image_from_key, fg_color="#cc3333", hover_color="#aa2222", font=(MAIN_FONT, 14, "bold")).pack(fill="x", expand=True, side="left", padx=5)
+
+        save_btn = ctk.CTkButton(right_frame, text="💾 LƯU TOÀN BỘ CÀI ĐẶT", command=self.save_settings_dynamic, fg_color=ACCENT_COLOR, hover_color=HOVER_COLOR, font=(MAIN_FONT, 14, "bold"))
+        save_btn.pack(fill="x", pady=10, padx=5)
+
         self.refresh_keys_list()
 
-    
-
     def refresh_keys_list(self):
-        """Tải lại danh sách Key từ Config"""
         self.keys_listbox.delete(0, tk.END)
-        
         if config_manager.config.has_section('IMAGE_PATHS'):
             keys = config_manager.config.options('IMAGE_PATHS')
             for key in keys:
                 self.keys_listbox.insert(tk.END, key)
 
     def on_key_selected(self, event):
-        """Khi chọn một Key bên trái, hiển thị ảnh bên phải"""
         selection = self.keys_listbox.curselection()
         if not selection:
             return
-        
         key = self.keys_listbox.get(selection[0])
-        self.lbl_current_key.config(text=f"Đang chọn: {key}")
-        
+        self.lbl_current_key.configure(text=f"Đang chọn: {key}")
         
         self.images_listbox.delete(0, tk.END)
         raw_val = config_manager.get('IMAGE_PATHS', key, "")
         if raw_val:
             paths = [p.strip() for p in raw_val.split(',') if p.strip()]
-            for p in paths:
-                self.images_listbox.insert(tk.END, p)
+        for p in paths:
+            self.images_listbox.insert(tk.END, p)
 
     def _spawn_inline_entry(self, listbox, index, initial_text, on_commit):
-        """Helper: Tạo ô Entry đè lên dòng Listbox để sửa trực tiếp"""
-        
         bbox = listbox.bbox(index)
         if not bbox: return 
-
-        
         entry = tk.Entry(listbox, borderwidth=0, highlightthickness=1, 
-                         bg=self.dark_mode_colors['entry_bg'], fg="white", font=("ZFVCutiegirl", 10))
-        
-        
+                        bg=FRAME_BG, fg="white", font=(MAIN_FONT, 10))
         x, y, w, h = bbox
         entry.place(x=x, y=y, width=w, height=h)
         entry.insert(0, initial_text)
@@ -1158,9 +981,7 @@ class AutoACSTool:
         entry.bind("<FocusOut>", lambda e: commit()) 
         entry.bind("<Escape>", cancel)
 
-    def add_new_key(self):
-        """Thêm Key mới (Inline)"""
-        
+    def add_new_key(self):  
         temp_name = "new_key"
         self.keys_listbox.insert(tk.END, temp_name)
         idx = self.keys_listbox.size() - 1
@@ -1169,37 +990,28 @@ class AutoACSTool:
         self.keys_listbox.selection_set(idx)
 
         def on_add_commit(new_key_name):
-            
             self.keys_listbox.delete(idx)
-            
             final_name = new_key_name.strip().replace(" ", "_").lower()
             if not final_name: return
 
             if config_manager.config.has_option('IMAGE_PATHS', final_name):
-                tk.messagebox.showwarning("Lỗi", "Key này đã tồn tại!")
+                messagebox.showwarning("Lỗi", "Key này đã tồn tại!")
                 self.refresh_keys_list()
                 return
-            
-            
             config_manager.set('IMAGE_PATHS', final_name, "")
             self.refresh_keys_list()
-            
-            
             try:
                 new_idx = self.keys_listbox.get(0, tk.END).index(final_name)
                 self.keys_listbox.selection_set(new_idx)
                 self.keys_listbox.event_generate("<<ListboxSelect>>")
             except: pass
 
-        
         self._spawn_inline_entry(self.keys_listbox, idx, "", on_add_commit)
 
     def rename_current_key(self):
-        """Đổi tên Key (Inline)"""
         selection = self.keys_listbox.curselection()
         if not selection: return
         idx = selection[0]
-        idx = self.keys_listbox.size() - 1 if idx >= self.keys_listbox.size() else idx
         old_key = self.keys_listbox.get(idx)
 
         def on_rename_commit(new_key_name):
@@ -1207,10 +1019,9 @@ class AutoACSTool:
             if not final_name or final_name == old_key: return
 
             if config_manager.config.has_option('IMAGE_PATHS', final_name):
-                tk.messagebox.showwarning("Lỗi", "Key này đã tồn tại!")
+                messagebox.showwarning("Lỗi", "Key này đã tồn tại!")
                 return
 
-            
             val = config_manager.get('IMAGE_PATHS', old_key)
             config_manager.config.remove_option('IMAGE_PATHS', old_key)
             config_manager.set('IMAGE_PATHS', final_name, val)
@@ -1222,32 +1033,26 @@ class AutoACSTool:
                 self.keys_listbox.event_generate("<<ListboxSelect>>")
             except: pass
 
-        
         self._spawn_inline_entry(self.keys_listbox, idx, old_key, on_rename_commit)
 
     def delete_current_key(self):
-        """Xóa Key"""
         selection = self.keys_listbox.curselection()
         if not selection: return
-        
         key = self.keys_listbox.get(selection[0])
-        if tk.messagebox.askyesno("Xác nhận", f"Bạn có chắc muốn xóa Key '{key}' không?"):
+        if messagebox.askyesno("Xác nhận", f"Bạn có chắc muốn xóa Key '{key}' không?"):
             config_manager.config.remove_option('IMAGE_PATHS', key)
             config_manager.save_config() 
             self.refresh_keys_list()
             self.images_listbox.delete(0, tk.END)
-            self.lbl_current_key.config(text="Đang chọn: (Chưa chọn)")
+            self.lbl_current_key.configure(text="Đang chọn: (Chưa chọn)")
 
     def add_image_to_key(self):
-        """Thêm đường dẫn ảnh vào Key đang chọn"""
         selection = self.keys_listbox.curselection()
         if not selection:
-            tk.messagebox.showwarning("Chú ý", "Vui lòng chọn một Key bên trái trước.")
+            messagebox.showwarning("Chú ý", "Vui lòng chọn một Key bên trái trước.")
             return
         
         key = self.keys_listbox.get(selection[0])
-        
-        
         image_folder_name = config_manager.get('GENERAL', 'image_folder')
         initial_dir = os.path.join(os.path.dirname(__file__), image_folder_name)
         if not os.path.exists(initial_dir): os.makedirs(initial_dir)
@@ -1260,78 +1065,55 @@ class AutoACSTool:
         
         if file_paths:
             current_images = self.images_listbox.get(0, tk.END)
-            
             for file_path in file_paths:
                 filename = os.path.basename(file_path)
                 if filename not in current_images:
                     self.images_listbox.insert(tk.END, filename)
-            
-            
             self._update_config_images_from_listbox(key)
 
     def remove_image_from_key(self):
-        """Xóa ảnh khỏi danh sách"""
-        
         selection = self.keys_listbox.curselection()
         if not selection: 
-            tk.messagebox.showwarning("Chú ý", "Chưa chọn Key nào.")
+            messagebox.showwarning("Chú ý", "Chưa chọn Key nào.")
             return
         key = self.keys_listbox.get(selection[0])
-
-        
         img_sel = self.images_listbox.curselection()
         if not img_sel: 
-            tk.messagebox.showwarning("Chú ý", "Chưa chọn ảnh để xóa.")
+            messagebox.showwarning("Chú ý", "Chưa chọn ảnh để xóa.")
             return
-
-        
         for index in reversed(img_sel):
             self.images_listbox.delete(index)
-            
-        
         self._update_config_images_from_listbox(key)
 
     def _update_config_images_from_listbox(self, key):
-        """Helper: Cập nhật giá trị từ Listbox vào Config object (chưa lưu file)"""
         images = self.images_listbox.get(0, tk.END)
         val_str = ",".join(images)
         config_manager.set('IMAGE_PATHS', key, val_str)
 
     def save_settings_dynamic(self):
-        """Lưu tất cả vào file config.ini"""
         try:
-            
             config_manager.set('GENERAL', 'screenshot_delay_sec', self.screenshot_delay_entry.get())
             config_manager.set('GENERAL', 'action_delay_sec', self.action_delay_entry.get())
             config_manager.set('GENERAL', 'find_image_confidence', self.confidence_entry.get())
-
-            
-            
             config_manager.save_config()
-            
             logger.info("Người dùng đã lưu cài đặt mới.")
         except Exception as e:
             logger.error(f"Lỗi khi lưu cài đặt: {e}", exc_info=True)
 
     def create_suki_tab(self):
-        tab = ttk.Frame(self.notebook, padding="20")
-        tab.configure(style='TFrame')
-        self.notebook.add(tab, text="Suki UwU")
-        tab.grid_rowconfigure(0, weight=1)
-        tab.grid_rowconfigure(1, weight=0)
-        tab.grid_rowconfigure(2, weight=1)
-        tab.grid_columnconfigure(0, weight=1)
-        tab.grid_columnconfigure(1, weight=0)
-        tab.grid_columnconfigure(2, weight=1)
-        content_frame = ttk.Frame(tab, style='TFrame')
-        content_frame.grid(row=1, column=1, sticky="nsew") 
-        ttk.Label(content_frame, text=APP_NAME, style='Large.TLabel').pack(pady=(20, 10))
-        ttk.Label(content_frame, text="Tự động Ghi UID, địa chỉ và test", style='TLabel').pack(pady=5)
-        ttk.Label(content_frame, text=f"Version: {VERSION}", style='TLabel').pack(pady=5)
-        author_frame = ttk.Frame(content_frame, style='TFrame')
+        tab = self.tabview.tab("Suki UwU")
+        
+        content_frame = ctk.CTkFrame(tab, fg_color="transparent")
+        content_frame.pack(fill="both", expand=True)
+        
+        ctk.CTkLabel(content_frame, text=APP_NAME, font=(MAIN_FONT, 24, "bold")).pack(pady=(40, 10))
+        ctk.CTkLabel(content_frame, text="Tự động Ghi UID, địa chỉ và test", font=(MAIN_FONT, 12)).pack(pady=5)
+        ctk.CTkLabel(content_frame, text=f"Version: {VERSION}", font=(MAIN_FONT, 12)).pack(pady=5)
+        
+        author_frame = ctk.CTkFrame(content_frame, fg_color="transparent")
         author_frame.pack(pady=5)
-        ttk.Label(author_frame, text="Author: ", style='TLabel').pack(side="left")
-        author_link = ttk.Label(author_frame, text="Suki", foreground="#db9aaa", cursor="hand2", style='TLabel')
+        ctk.CTkLabel(author_frame, text="Author: ", font=(MAIN_FONT, 12)).pack(side="left")
+        author_link = ctk.CTkLabel(author_frame, text="Suki", text_color="#db9aaa", cursor="hand2", font=(MAIN_FONT, 12, "bold"))
         author_link.pack(side="left")
         author_link.bind("<Button-1>", lambda e: webbrowser.open("https://github.com/Suki8898"))
         
@@ -1343,11 +1125,10 @@ class AutoACSTool:
             if original_width > max_width or original_height > max_height:
                 ratio = min(max_width / original_width, max_height / original_height)
                 new_width, new_height = int(original_width * ratio), int(original_height * ratio)
-                resized_pil_image = pil_image.resize((new_width, new_height), Image.Resampling.LANCZOS)
-            else:
-                resized_pil_image = pil_image
-            self.suki_image_ref = ImageTk.PhotoImage(resized_pil_image) 
-            ttk.Label(content_frame, image=self.suki_image_ref, style='TLabel').pack(pady=(20, 10))
+                pil_image = pil_image.resize((new_width, new_height), Image.Resampling.LANCZOS)
+            
+            self.suki_image_ref = ImageTk.PhotoImage(pil_image)
+            ctk.CTkLabel(content_frame, image=self.suki_image_ref, text="").pack(pady=(20, 10))
         except:
             pass
 
@@ -1361,8 +1142,8 @@ class AutoACSTool:
 
     def schedule_update(self, delay, trigger):
         if hasattr(self, 'after_id') and self.after_id:
-            self.master.after_cancel(self.after_id)
-        self.after_id = self.master.after(delay, lambda: self.delayed_update(trigger))
+            self.after_cancel(self.after_id)
+        self.after_id = self.after(delay, lambda: self.delayed_update(trigger))
 
     def delayed_update(self, trigger):
         try:
@@ -1393,17 +1174,13 @@ class AutoACSTool:
         self.pump_entry.delete(0, tk.END)
         self.led_entry.delete(0, tk.END)
         self.dmx2vfd_entry.delete(0, tk.END)  
-
         try:
             if acs_auto.excel_data and 0 <= row_number < len(acs_auto.excel_data):
                 row = acs_auto.excel_data[row_number]
-                
-                
                 self.no_entry.insert(0, str(row_number + 1))
                 self.pump_entry.insert(0, str(row['Pump']))
                 self.led_entry.insert(0, str(row['Led']))
                 self.dmx2vfd_entry.insert(0, str(row['Dmx2Vfd'])) 
-                
         except Exception as e:
             logger.warning(f"Không thể lấy dữ liệu hàng {row_number}: {e}")
 
@@ -1430,15 +1207,15 @@ class AutoACSTool:
                 self.update_excel_status()
 
     def set_buttons_state(self, state):
-        self.btn_uid_col1.config(state=state)
-        self.btn_uid_col2.config(state=state)
-        self.btn_ghi_dia_chi.config(state=state)
-        self.btn_test.config(state=state)
-        self.btn_ghi_dia_chi_test.config(state=state)
-        self.btn_import_excel.config(state=state)
+        self.btn_uid_col1.configure(state=state)
+        self.btn_uid_col2.configure(state=state)
+        self.btn_ghi_dia_chi.configure(state=state)
+        self.btn_test.configure(state=state)
+        self.btn_ghi_dia_chi_test.configure(state=state)
+        self.btn_import_excel.configure(state=state)
 
     def create_custom_title_bar(self):
-        self.title_bar = tk.Frame(self.master, bg=self.dark_mode_colors['frame_bg'], relief="raised", bd=0, height=30)
+        self.title_bar = ctk.CTkFrame(self, fg_color=FRAME_BG, corner_radius=0, height=30)
         self.title_bar.pack(side="top", fill="x")
 
         icon_path = os.path.join(os.path.dirname(__file__), config_manager.get('GENERAL', 'icon_folder'), 'app.ico')
@@ -1447,10 +1224,10 @@ class AutoACSTool:
                 pil_icon = Image.open(icon_path)
                 pil_icon = pil_icon.resize((24, 24), Image.Resampling.LANCZOS)
                 self.title_icon_img = ImageTk.PhotoImage(pil_icon)
-                tk.Label(self.title_bar, image=self.title_icon_img, bg=self.dark_mode_colors['frame_bg']).pack(side="left", padx=5, pady=2)
+                ctk.CTkLabel(self.title_bar, image=self.title_icon_img, text="").pack(side="left", padx=5, pady=2)
             except: pass
         
-        def animate_title_rainbow(parent, text="A C S  A u t o", font=("ZFVCutiegirl", 11, "bold"), bg="#2b2b2b", speed=50):
+        def animate_title_rainbow(parent, text="A C S  A u t o", font=(MAIN_FONT, 11, "bold"), bg="#2b2b2b", speed=50):
             canvas = tk.Canvas(parent, bg=bg, highlightthickness=0, height=28)
             canvas.pack(side="left", fill="x", expand=True)
             hue = 0.0
@@ -1466,17 +1243,14 @@ class AutoACSTool:
             draw_text()
             return canvas
 
-        canvas = animate_title_rainbow(self.title_bar, bg=self.dark_mode_colors['frame_bg'])
+        canvas = animate_title_rainbow(self.title_bar, bg=FRAME_BG)
 
-        self.close_button = tk.Button(self.title_bar, text="❌", command=self.master.destroy,
-            bg=self.dark_mode_colors['frame_bg'], fg=self.dark_mode_colors['fg'], bd=0, width=4, font=('Arial', 11, 'bold'))
+        self.close_button = ctk.CTkButton(self.title_bar, text="❌", command=self.destroy,
+            fg_color="transparent", hover_color="#cc3333", width=30, height=30, font=(MAIN_FONT, 12))
         self.close_button.pack(side="right")
-        self.min_button = tk.Button(self.title_bar, text="—", command=self.minimize_window,
-            bg=self.dark_mode_colors['frame_bg'], fg=self.dark_mode_colors['fg'], bd=0, width=4, font=('Arial', 11, 'bold'))
+        self.min_button = ctk.CTkButton(self.title_bar, text="—", command=self.minimize_window,
+            fg_color="transparent", hover_color="#444", width=30, height=30, font=(MAIN_FONT, 12))
         self.min_button.pack(side="right")
-        
-        self.close_button.bind("<Enter>", lambda e: self.close_button.config(bg="#db9aaa", fg="#ffffff"))
-        self.close_button.bind("<Leave>", lambda e: self.close_button.config(bg=self.dark_mode_colors['frame_bg'], fg=self.dark_mode_colors['fg']))
         
         self.title_bar.bind("<ButtonPress-1>", self._start_move_window)
         self.title_bar.bind("<B1-Motion>", self._move_window)
@@ -1484,7 +1258,7 @@ class AutoACSTool:
         canvas.bind("<B1-Motion>", self._move_window)
 
     def minimize_window(self):
-        self.master.withdraw()
+        self.withdraw()
         self.show_mini_bar()
 
     def show_mini_bar(self):
@@ -1492,50 +1266,37 @@ class AutoACSTool:
             self.mini_bar.lift()
             return
 
-        self.mini_bar = tk.Toplevel(self.master)
+        self.mini_bar = ctk.CTkToplevel(self)
         self.mini_bar.overrideredirect(True)
         self.mini_bar.attributes("-topmost", True)
-        self.mini_bar.configure(bg="#2b2b2b")
+        self.mini_bar.configure(fg_color="#2b2b2b")
 
-        self.master.update_idletasks()
-        x = self.master.winfo_rootx()
-        y = self.master.winfo_rooty()
-        main_width = self.master.winfo_width()
-        main_height = self.master.winfo_height()
-
+        self.update_idletasks()
+        x = self.winfo_rootx()
+        y = self.winfo_rooty()
         width, height = 140, 40
 
         self.mini_bar.geometry(f"{width}x{height}+{x}+{y}")
+        self.mini_bar.attributes("-alpha", 0.92)
 
-        try:
-            self.mini_bar.wm_attributes("-alpha", 0.92)
-        except:
-            pass
-
-        def create_rainbow_canvas(parent, text="A C S  A u t o  :3", font=("ZFVCutiegirl", 11, "bold"), bg="#2b2b2b", speed=50):
+        def create_rainbow_canvas(parent, text="A C S  A u t o  :3", font=(MAIN_FONT, 11, "bold"), bg="#2b2b2b", speed=50):
             canvas = tk.Canvas(parent, bg=bg, highlightthickness=0)
             canvas.pack(expand=True, fill="both")
-
             hue = 0.0
-
             def draw_text():
                 nonlocal hue
                 canvas.delete("all")
-
                 for i, ch in enumerate(reversed(text)):
                     offset = (hue + i * 0.01) % 1.0
                     r, g, b = [int(255 * v) for v in colorsys.hsv_to_rgb(offset, 1, 1)]
                     color = f'#{r:02x}{g:02x}{b:02x}'
                     canvas.create_text(25 + (len(text) - i - 1) * 5, 20, text=ch, fill=color, font=font, anchor="w")
-
                 hue = (hue + 0.02) % 1.0
                 canvas.after(speed, draw_text)
-
             draw_text()
             return canvas
 
         canvas = create_rainbow_canvas(self.mini_bar, text="A C S  A u t o  :3")
-
         canvas.bind("<Button-1>", self.start_move)
         canvas.bind("<B1-Motion>", self.do_move)
         canvas.bind("<Double-Button-1>", lambda e: self.restore_main_window())
@@ -1553,18 +1314,18 @@ class AutoACSTool:
         if hasattr(self, "mini_bar") and self.mini_bar.winfo_exists():
             x, y = self.mini_bar.winfo_x(), self.mini_bar.winfo_y()
             self.mini_bar.destroy()
-            self.master.geometry(f"+{x}+{y}")
-        self.master.deiconify()
-        self.master.lift()
-        self.master.attributes("-topmost", True)
+            self.geometry(f"+{x}+{y}")
+        self.deiconify()
+        self.lift()
+        self.attributes("-topmost", True)
 
     def _start_move_window(self, event):
         self.start_x, self.start_y = event.x, event.y
 
     def _move_window(self, event):
-        new_x = self.master.winfo_x() + (event.x - self.start_x)
-        new_y = self.master.winfo_y() + (event.y - self.start_y)
-        self.master.geometry(f"+{new_x}+{new_y}")
+        new_x = self.winfo_x() + (event.x - self.start_x)
+        new_y = self.winfo_y() + (event.y - self.start_y)
+        self.geometry(f"+{new_x}+{new_y}")
 
 class ScriptManager:
     def __init__(self, filepath='scripts.json'):
@@ -1577,11 +1338,9 @@ class ScriptManager:
         try:
             with open(self.filepath, 'r', encoding='utf-8') as f:
                 data = json.load(f)
-                
                 for cat in data:
                     for i, script in enumerate(data[cat]):
                         if 'active' not in script:
-                            
                             script['active'] = (i == 0)
                 return data
         except Exception as e:
@@ -1604,13 +1363,11 @@ class ScriptManager:
         for script in scripts:
             if script.get('active', False):
                 return script
-        
         if scripts:
             return scripts[0]
         return None
 
     def create_default_scripts(self):
-        
         default_steps = [{"name": "Ví dụ", "code": "pass"}]
         data = {
             "uid_col1": [{"name": "Mặc định Col 1", "active": True, "steps": default_steps}],
@@ -1623,69 +1380,42 @@ class ScriptManager:
 
 script_manager = ScriptManager()
 
-DARK_THEME = {
-    'bg': '#1e1e1e',
-    'fg': '#e0e0e0',
-    'button_bg': '#333333',
-    'button_fg': '#ffffff',
-    'frame_bg': '#282828',
-    'select_bg': '#5c5c5c',
-    'border': '#505050',
-    'highlight': '#db9aaa',
-    'entry_bg': '#2a2a2a'
-}
-
 def setup_custom_window(window, title_text, is_resizable=False, width=None, height=None):
-    """
-    Hàm này biến một Toplevel thành cửa sổ giao diện Custom (Dark mode, Custom Titlebar, Resizable)
-    """
-    
-    window.configure(bg=DARK_THEME['bg'])
+    window.configure(fg_color=DARK_BG)
     window.overrideredirect(True)  
     window.attributes("-topmost", True) 
-
-    
+   
     if width and height:
-        
         screen_width = window.winfo_screenwidth()
         screen_height = window.winfo_screenheight()
         x = int((screen_width - width) / 2)
         y = int((screen_height - height) / 2)
         window.geometry(f"{width}x{height}+{x}+{y}")
     
+    main_border = ctk.CTkFrame(window, fg_color="#505050")
+    main_border.pack(fill="both", expand=True, padx=1, pady=1)
     
-    main_border = tk.Frame(window, bg=DARK_THEME['border'], padx=1, pady=1)
-    main_border.pack(fill=tk.BOTH, expand=True)
-    
-    
-    inner_content = tk.Frame(main_border, bg=DARK_THEME['bg'])
-    inner_content.pack(fill=tk.BOTH, expand=True)
+    inner_content = ctk.CTkFrame(main_border, fg_color=DARK_BG)
+    inner_content.pack(fill="both", expand=True)
 
-    
-    title_bar = tk.Frame(inner_content, bg=DARK_THEME['frame_bg'], height=30)
-    title_bar.pack(side=tk.TOP, fill=tk.X)
-    
+    title_bar = ctk.CTkFrame(inner_content, fg_color=FRAME_BG, height=30, corner_radius=0)
+    title_bar.pack(side="top", fill="x")
     
     try:
         icon_path = os.path.join(os.path.dirname(__file__), config_manager.get('GENERAL', 'icon_folder'), 'app.ico')
         if os.path.exists(icon_path):
             pil_icon = Image.open(icon_path).resize((18, 18), Image.Resampling.LANCZOS)
             window.icon_img_ref = ImageTk.PhotoImage(pil_icon) 
-            tk.Label(title_bar, image=window.icon_img_ref, bg=DARK_THEME['frame_bg']).pack(side=tk.LEFT, padx=(5, 5))
+            ctk.CTkLabel(title_bar, image=window.icon_img_ref, text="").pack(side="left", padx=(5, 5))
     except: pass
 
-    
-    title_lbl = tk.Label(title_bar, text=title_text, bg=DARK_THEME['frame_bg'], fg=DARK_THEME['fg'], font=("ZFVCutiegirl", 10, "bold"))
-    title_lbl.pack(side=tk.LEFT, padx=5)
+    title_lbl = ctk.CTkLabel(title_bar, text=title_text, text_color="white", font=(MAIN_FONT, 10, "bold"))
+    title_lbl.pack(side="left", padx=5)
 
-    
-    close_btn = tk.Button(title_bar, text="✕", command=window.destroy,
-                          bg=DARK_THEME['frame_bg'], fg=DARK_THEME['fg'], bd=0, font=("Arial", 10), width=4)
-    close_btn.pack(side=tk.RIGHT)
-    close_btn.bind("<Enter>", lambda e: close_btn.config(bg="#cc3333", fg="white"))
-    close_btn.bind("<Leave>", lambda e: close_btn.config(bg=DARK_THEME['frame_bg'], fg=DARK_THEME['fg']))
+    close_btn = ctk.CTkButton(title_bar, text="✕", command=window.destroy,
+                          fg_color="transparent", hover_color="#cc3333", width=30, height=25, font=(MAIN_FONT, 10))
+    close_btn.pack(side="right", padx=2)
 
-    
     def start_move(event):
         window.x = event.x
         window.y = event.y
@@ -1702,15 +1432,12 @@ def setup_custom_window(window, title_text, is_resizable=False, width=None, heig
     title_lbl.bind("<ButtonPress-1>", start_move)
     title_lbl.bind("<B1-Motion>", do_move)
 
-    
     if is_resizable:
         grip_size = 15
-        grip_frame = tk.Frame(inner_content, bg=DARK_THEME['bg'], cursor="sizing")
-        grip_frame.pack(side=tk.BOTTOM, fill=tk.X) 
-        
-        
-        grip = tk.Label(grip_frame, text="◢", bg=DARK_THEME['bg'], fg=DARK_THEME['border'], cursor="bottom_right_corner")
-        grip.pack(side=tk.RIGHT, anchor=tk.SE)
+        grip_frame = ctk.CTkFrame(inner_content, fg_color=DARK_BG, height=grip_size, cursor="sizing")
+        grip_frame.pack(side="bottom", fill="x") 
+        grip = ctk.CTkLabel(grip_frame, text="◢", text_color="#505050", cursor="bottom_right_corner", font=(MAIN_FONT, 10))
+        grip.pack(side="right", anchor="se")
 
         def start_resize(event):
             window.start_x = event.x_root
@@ -1732,137 +1459,110 @@ def setup_custom_window(window, title_text, is_resizable=False, width=None, heig
     
     return inner_content, None
 
-class ScriptSelector(tk.Toplevel):
+class ScriptSelector(ctk.CTkToplevel):
     def __init__(self, master, category, on_script_selected):
         super().__init__(master)
-        
         
         self.content_frame, _ = setup_custom_window(self, f"Quản lý Kịch bản: {category}", is_resizable=False, width=550, height=450)
         
         self.category = category
         self.on_script_selected = on_script_selected
-        
-        
         self.editing_index = -1 
         
-        
-        self.style = ttk.Style()
-        self.style.configure('Script.TCheckbutton', background=DARK_THEME['bg'], foreground=DARK_THEME['fg'], font=('ZFVCutiegirl', 10))
+        canvas_frame = ctk.CTkFrame(self.content_frame, fg_color="transparent")
+        canvas_frame.pack(fill="both", expand=True, padx=10, pady=10)
 
+        self.canvas = tk.Canvas(canvas_frame, bg=FRAME_BG, highlightthickness=0)
+        self.scrollbar = ctk.CTkScrollbar(canvas_frame, orientation="vertical", command=self.canvas.yview)
         
-        
-        canvas_frame = tk.Frame(self.content_frame, bg=DARK_THEME['bg'])
-        canvas_frame.pack(fill=tk.BOTH, expand=True, padx=10, pady=10)
-
-        self.canvas = tk.Canvas(canvas_frame, bg=DARK_THEME['button_bg'], highlightthickness=0)
-        self.scrollbar = ttk.Scrollbar(canvas_frame, orient="vertical", command=self.canvas.yview)
-        
-        self.list_frame = tk.Frame(self.canvas, bg=DARK_THEME['button_bg'])
+        self.list_frame = ctk.CTkFrame(self.canvas, fg_color=FRAME_BG)
         
         self.canvas_window = self.canvas.create_window((0, 0), window=self.list_frame, anchor="nw")
         self.canvas.configure(yscrollcommand=self.scrollbar.set)
         
-        self.canvas.pack(side=tk.LEFT, fill=tk.BOTH, expand=True)
-        self.scrollbar.pack(side=tk.RIGHT, fill=tk.Y)
+        self.canvas.pack(side="left", fill="both", expand=True)
+        self.scrollbar.pack(side="right", fill="y")
         
         self.list_frame.bind("<Configure>", lambda e: self.canvas.configure(scrollregion=self.canvas.bbox("all")))
         self.canvas.bind("<Configure>", lambda e: self.canvas.itemconfig(self.canvas_window, width=e.width))
 
+        btn_frame = ctk.CTkFrame(self.content_frame, fg_color="transparent")
+        btn_frame.pack(fill="x", pady=10, padx=10)
         
-        btn_frame = ttk.Frame(self.content_frame)
-        btn_frame.pack(fill=tk.X, pady=10, padx=10)
+        btn_new = ctk.CTkButton(btn_frame, text="➕ Tạo kịch bản mới", command=self.create_new, 
+                            fg_color=ACCENT_COLOR, hover_color=HOVER_COLOR, text_color="black", font=(MAIN_FONT, 12))
+        btn_new.pack(side="left")
         
-        
-        btn_new = tk.Button(btn_frame, text="➕ Tạo kịch bản mới", command=self.create_new, 
-                            bg=DARK_THEME['highlight'], fg="black", bd=0, padx=10, pady=5, font=('ZFVCutiegirl', 9, 'bold'))
-        btn_new.pack(side=tk.LEFT)
-        
-        btn_close = tk.Button(btn_frame, text="Đóng", command=self.destroy,
-                              bg="#cc3333", fg="white", bd=0, padx=10, pady=5)
-        btn_close.pack(side=tk.RIGHT)
+        btn_close = ctk.CTkButton(btn_frame, text="Đóng", command=self.destroy,
+                              fg_color="#cc3333", hover_color="#aa2222", font=(MAIN_FONT, 12))
+        btn_close.pack(side="right")
 
         self.refresh_list()
 
     def refresh_list(self):
-        
         for w in self.list_frame.winfo_children(): w.destroy()
         
         self.scripts_list = script_manager.get_scripts_by_category(self.category)
         
-        
-        header = tk.Frame(self.list_frame, bg=DARK_THEME['frame_bg'])
-        header.pack(fill=tk.X, pady=0)
-        tk.Label(header, text="Active", width=6, bg=DARK_THEME['frame_bg'], fg="white", font=('ZFVCutiegirl', 9, 'bold'), pady=5).pack(side=tk.LEFT)
-        tk.Label(header, text="Tên Kịch Bản", bg=DARK_THEME['frame_bg'], fg="white", font=('ZFVCutiegirl', 9, 'bold'), pady=5).pack(side=tk.LEFT, padx=5, fill=tk.X, expand=True)
-        tk.Label(header, text="Thao tác", width=18, bg=DARK_THEME['frame_bg'], fg="white", font=('ZFVCutiegirl', 9, 'bold'), pady=5).pack(side=tk.RIGHT)
+        header = ctk.CTkFrame(self.list_frame, fg_color="#333333")
+        header.pack(fill="x", pady=0)
+        ctk.CTkLabel(header, text="Active", width=50, font=(MAIN_FONT, 9, "bold")).pack(side="left")
+        ctk.CTkLabel(header, text="Tên Kịch Bản", font=(MAIN_FONT, 9, "bold")).pack(side="left", padx=5, fill="x", expand=True)
+        ctk.CTkLabel(header, text="Thao tác", width=100, font=(MAIN_FONT, 9, "bold")).pack(side="right", padx=5)
 
         if not self.scripts_list:
-            tk.Label(self.list_frame, text="(Chưa có kịch bản nào)", bg=DARK_THEME['button_bg'], fg="#888", pady=20).pack()
+            ctk.CTkLabel(self.list_frame, text="(Chưa có kịch bản nào)", text_color="#888", font=(MAIN_FONT, 12)).pack(pady=20)
 
         for i, script in enumerate(self.scripts_list):
-            bg_color = DARK_THEME['button_bg']
-            row_frame = tk.Frame(self.list_frame, bg=bg_color, pady=3)
-            row_frame.pack(fill=tk.X, pady=1)
-            
+            bg_color = FRAME_BG
+            row_frame = ctk.CTkFrame(self.list_frame, fg_color=bg_color)
+            row_frame.pack(fill="x", pady=1)
             
             is_active = script.get('active', False)
-            var = tk.BooleanVar(value=is_active)
-            chk = ttk.Checkbutton(row_frame, variable=var, command=lambda idx=i: self.set_active_script(idx), style='Script.TCheckbutton')
-            chk.pack(side=tk.LEFT, padx=12)
+            var = ctk.BooleanVar(value=is_active)
+            chk = ctk.CTkCheckBox(row_frame, text="", variable=var, command=lambda idx=i: self.set_active_script(idx), width=20, fg_color=ACCENT_COLOR, font=(MAIN_FONT, 12))
+            chk.pack(side="left", padx=15)
 
-            
-            name_container = tk.Frame(row_frame, bg=bg_color)
-            name_container.pack(side=tk.LEFT, padx=5, fill=tk.X, expand=True)
+            name_container = ctk.CTkFrame(row_frame, fg_color="transparent")
+            name_container.pack(side="left", padx=5, fill="x", expand=True)
 
             if i == self.editing_index:
-                
-                entry_name = tk.Entry(name_container, bg="#4a4a4a", fg="white", insertbackground="white", bd=0, font=('ZFVCutiegirl', 10))
-                entry_name.pack(fill=tk.X, ipady=3)
+                entry_name = ctk.CTkEntry(name_container, height=28, font=(MAIN_FONT, 12))
+                entry_name.pack(fill="x")
                 entry_name.insert(0, script['name'])
                 entry_name.focus_set() 
                 entry_name.select_range(0, tk.END) 
-                
                 
                 entry_name.bind('<Return>', lambda e, idx=i, ent=entry_name: self.save_name(idx, ent.get()))
                 entry_name.bind('<Escape>', lambda e: self.cancel_rename())
                 
             else:
-                
-                fg_color = DARK_THEME['highlight'] if is_active else "white"
-                name_lbl = tk.Label(name_container, text=script['name'], bg=bg_color, fg=fg_color, 
-                                    font=('ZFVCutiegirl', 10, 'bold' if is_active else 'normal'), anchor="w")
-                name_lbl.pack(fill=tk.X, expand=True)
-                
-                
+                fg_color = ACCENT_COLOR if is_active else "white"
+                name_lbl = ctk.CTkLabel(name_container, text=script['name'], text_color=fg_color, 
+                                    font=(MAIN_FONT, 10, 'bold' if is_active else 'normal'), anchor="w")
+                name_lbl.pack(fill="x", expand=True)
                 name_lbl.bind("<Double-Button-1>", lambda e, idx=i: self.start_rename(idx))
 
-            
-            btn_box = tk.Frame(row_frame, bg=bg_color)
-            btn_box.pack(side=tk.RIGHT, padx=5)
+            btn_box = ctk.CTkFrame(row_frame, fg_color="transparent")
+            btn_box.pack(side="right", padx=5)
 
             if i == self.editing_index:
-                
-                tk.Button(btn_box, text="✓", font=('Arial', 9, 'bold'), bg="#6a9955", fg="white", bd=0, width=3,
-                          command=lambda idx=i, ent=entry_name: self.save_name(idx, ent.get())).pack(side=tk.LEFT, padx=1)
-                tk.Button(btn_box, text="✘", font=('Arial', 9, 'bold'), bg="#cc3333", fg="white", bd=0, width=3,
-                          command=self.cancel_rename).pack(side=tk.LEFT, padx=1)
+                ctk.CTkButton(btn_box, text="✓", font=(MAIN_FONT, 9, 'bold'), fg_color="#6a9955", width=30, height=25,
+                          command=lambda idx=i, ent=entry_name: self.save_name(idx, ent.get())).pack(side="left", padx=1)
+                ctk.CTkButton(btn_box, text="✘", font=(MAIN_FONT, 9, 'bold'), fg_color="#cc3333", width=30, height=25,
+                          command=self.cancel_rename).pack(side="left", padx=1)
             else:
+                ctk.CTkButton(btn_box, text="🖋️", font=(MAIN_FONT, 9), fg_color="#4a4a4a", width=30, height=25,
+                          command=lambda idx=i: self.start_rename(idx)).pack(side="left", padx=1)
                 
-                tk.Button(btn_box, text="🖋️", font=('Arial', 9), bg="#4a4a4a", fg="white", bd=0, width=3,
-                          command=lambda idx=i: self.start_rename(idx)).pack(side=tk.LEFT, padx=1)
-                
-                tk.Button(btn_box, text="Code", font=('ZFVCutiegirl', 9), bg=DARK_THEME['highlight'], fg="black", bd=0,
-                          command=lambda idx=i: self.edit_content(idx)).pack(side=tk.LEFT, padx=1)
-                
+                ctk.CTkButton(btn_box, text="Code", font=(MAIN_FONT, 9), fg_color=ACCENT_COLOR, text_color="black", width=40, height=25,
+                          command=lambda idx=i: self.edit_content(idx)).pack(side="left", padx=1)
                 
                 if len(self.scripts_list) > 1:
-                    tk.Button(btn_box, text="🗑", font=('Arial', 9), bg="#cc3333", fg="white", bd=0, width=3,
-                              command=lambda idx=i: self.delete_script(idx)).pack(side=tk.LEFT, padx=1)
-
-    
+                    ctk.CTkButton(btn_box, text="🗑", font=(MAIN_FONT, 9), fg_color="#cc3333", width=30, height=25,
+                              command=lambda idx=i: self.delete_script(idx)).pack(side="left", padx=1)
 
     def create_new(self):
-        
         base_name = "Kịch bản mới"
         count = 1
         existing_names = [s['name'] for s in self.scripts_list]
@@ -1871,19 +1571,16 @@ class ScriptSelector(tk.Toplevel):
             count += 1
             new_name = f"{base_name} {count}"
 
-        
         new_script = {"name": new_name, "active": False, "steps": [{"name": "New Block", "code": "pass"}]}
         
         if self.category not in script_manager.scripts: 
             script_manager.scripts[self.category] = []
-        
         
         if not script_manager.scripts[self.category]: 
             new_script['active'] = True
             
         script_manager.scripts[self.category].append(new_script)
         script_manager.save_scripts()
-        
         
         self.editing_index = len(script_manager.scripts[self.category]) - 1
         self.refresh_list()
@@ -1899,7 +1596,7 @@ class ScriptSelector(tk.Toplevel):
     def save_name(self, index, new_name):
         new_name = new_name.strip()
         if not new_name:
-            tk.messagebox.showwarning("Lỗi", "Tên không được để trống!", parent=self)
+            messagebox.showwarning("Lỗi", "Tên không được để trống!", parent=self)
             return
 
         self.scripts_list[index]['name'] = new_name
@@ -1917,26 +1614,21 @@ class ScriptSelector(tk.Toplevel):
         ScriptEditor(self.master, self.category, index, self.refresh_list)
 
     def delete_script(self, index):
-        if tk.messagebox.askyesno("Xác nhận", "Xóa kịch bản này?", parent=self):
+        if messagebox.askyesno("Xác nhận", "Xóa kịch bản này?", parent=self):
             del script_manager.scripts[self.category][index]
             if not any(s.get('active') for s in script_manager.scripts[self.category]) and script_manager.scripts[self.category]:
                 script_manager.scripts[self.category][0]['active'] = True
             script_manager.save_scripts()
-            
-            
             if self.editing_index == index:
                 self.editing_index = -1
             elif self.editing_index > index:
                 self.editing_index -= 1
-                
             self.refresh_list()
 
-class FindReplaceDialog(tk.Toplevel):
+class FindReplaceDialog(ctk.CTkToplevel):
     def __init__(self, master, text_widget):
         super().__init__(master)
         
-                 
-                 
         self.content_frame, _ = setup_custom_window(
             self, 
             title_text="Tìm kiếm & Thay thế", 
@@ -1946,98 +1638,48 @@ class FindReplaceDialog(tk.Toplevel):
         )
         
         self.text_widget = text_widget
-        
-                 
         self.create_interface()
-
-                 
         self.bind('<Return>', lambda e: self.find_next())
         self.bind('<Escape>', lambda e: self.destroy())
-
         self.find_entry.bind("<KeyRelease>", self.live_highlight) 
-        
-        self.find_entry.focus_set()
-
-                 
         self.find_entry.focus_set()
 
     def live_highlight(self, event=None):
         query = self.find_entry.get()
-        
-                 
         self.text_widget.tag_remove('match', '1.0', tk.END)
         self.text_widget.tag_remove('current_match', '1.0', tk.END)
-
         if not query: return
-
-                 
         start_pos = '1.0'
         while True:
             pos = self.text_widget.search(query, start_pos, stopindex=tk.END, nocase=True)
             if not pos:
                 break
-            
             end_pos = f"{pos}+{len(query)}c"
             self.text_widget.tag_add('match', pos, end_pos)
             start_pos = end_pos
 
     def create_interface(self):
-                 
-        main_frame = tk.Frame(self.content_frame, bg=DARK_THEME['bg'])
-        main_frame.pack(fill=tk.BOTH, expand=True, padx=20, pady=20)
+        main_frame = ctk.CTkFrame(self.content_frame, fg_color="transparent")
+        main_frame.pack(fill="both", expand=True, padx=20, pady=20)
 
-                 
-        lbl_opts = {'bg': DARK_THEME['bg'], 'fg': DARK_THEME['fg'], 'font': ('Segoe UI', 10), 'anchor': 'w'}
-        entry_opts = {
-            'bg': DARK_THEME['entry_bg'], 
-            'fg': 'white', 
-            'insertbackground': 'white', 
-            'relief': 'flat', 
-            'highlightthickness': 1, 
-            'highlightbackground': DARK_THEME['border'],
-            'highlightcolor': DARK_THEME['highlight'],
-            'font': ('Consolas', 11)
-        }
+        ctk.CTkLabel(main_frame, text="Từ khóa:", font=(MAIN_FONT, 12)).grid(row=0, column=0, sticky="w", pady=(0, 5))
+        self.find_entry = ctk.CTkEntry(main_frame, font=(MAIN_FONT, 12))
+        self.find_entry.grid(row=0, column=1, sticky="ew", padx=(10, 0), pady=(0, 5))
 
-                 
-        tk.Label(main_frame, text="Từ khóa:", **lbl_opts).grid(row=0, column=0, sticky="w", pady=(0, 5))
-        self.find_entry = tk.Entry(main_frame, **entry_opts)
-        self.find_entry.grid(row=0, column=1, sticky="ew", padx=(10, 0), pady=(0, 5), ipady=3)
+        ctk.CTkLabel(main_frame, text="Thay bằng:", font=(MAIN_FONT, 12)).grid(row=1, column=0, sticky="w", pady=5)
+        self.replace_entry = ctk.CTkEntry(main_frame, font=(MAIN_FONT, 12))
+        self.replace_entry.grid(row=1, column=1, sticky="ew", padx=(10, 0), pady=5)
 
-                 
-        tk.Label(main_frame, text="Thay bằng:", **lbl_opts).grid(row=1, column=0, sticky="w", pady=5)
-        self.replace_entry = tk.Entry(main_frame, **entry_opts)
-        self.replace_entry.grid(row=1, column=1, sticky="ew", padx=(10, 0), pady=5, ipady=3)
-
-                 
         main_frame.grid_columnconfigure(1, weight=1)
 
-                 
-        btn_frame = tk.Frame(self.content_frame, bg=DARK_THEME['bg'])
-        btn_frame.pack(fill=tk.X, side=tk.BOTTOM, padx=20, pady=20)
+        btn_frame = ctk.CTkFrame(self.content_frame, fg_color="transparent")
+        btn_frame.pack(fill="x", side="bottom", padx=20, pady=20)
 
-                 
-        def create_btn(parent, text, cmd, bg_color=DARK_THEME['button_bg']):
-            btn = tk.Button(
-                parent, text=text, command=cmd,
-                bg=bg_color, fg=DARK_THEME['fg'],
-                font=('Segoe UI', 9, 'bold'),
-                relief='flat', bd=0, padx=15, pady=5,
-                activebackground=DARK_THEME['select_bg'],
-                activeforeground='white'
-            )
-            btn.pack(side=tk.RIGHT, padx=5)
-            
-                     
-            def on_enter(e): btn.config(bg=DARK_THEME['highlight'], fg='black')
-            def on_leave(e): btn.config(bg=bg_color, fg=DARK_THEME['fg'])
-            
-                     
-            btn.bind("<Enter>", on_enter)
-            btn.bind("<Leave>", on_leave)
+        def create_btn(parent, text, cmd):
+            btn = ctk.CTkButton(parent, text=text, command=cmd, height=30, fg_color="#333", hover_color="#444", font=(MAIN_FONT, 12))
+            btn.pack(side="right", padx=5)
             return btn
 
-                 
         create_btn(btn_frame, "Thay tất cả", self.replace_all)
         create_btn(btn_frame, "Thay thế", self.replace_one)
         create_btn(btn_frame, "Tìm tiếp", self.find_next)
@@ -2045,45 +1687,27 @@ class FindReplaceDialog(tk.Toplevel):
     def find_next(self):
         query = self.find_entry.get()
         if not query: return
-        
-                 
         try:
             start_idx = self.text_widget.index("sel.last")
         except tk.TclError:
             start_idx = self.text_widget.index(tk.INSERT)
 
-                 
         pos = self.text_widget.search(query, start_idx, stopindex=tk.END, nocase=True)
-        
-                 
         if not pos:
             pos = self.text_widget.search(query, '1.0', stopindex=tk.END, nocase=True)
             
         if pos:
             end_pos = f"{pos}+{len(query)}c"
-            
-                     
             self.text_widget.see(pos)
-            
-                     
-                     
             self.text_widget.tag_remove("current_match", "1.0", tk.END)
-                     
             self.text_widget.tag_add("current_match", pos, end_pos)
-            
-                     
-                     
-                     
-                     
             self.text_widget.tag_remove(tk.SEL, "1.0", tk.END)
             self.text_widget.tag_add(tk.SEL, pos, end_pos)
             self.text_widget.mark_set(tk.INSERT, end_pos)
-            
-                     
             self.find_entry.focus_set()
             return pos, end_pos
         else:
-            tk.messagebox.showinfo("Thông báo", f"Không tìm thấy '{query}'", parent=self)
+            messagebox.showinfo("Thông báo", f"Không tìm thấy '{query}'", parent=self)
             self.find_entry.focus_set()
             return None, None
 
@@ -2091,28 +1715,18 @@ class FindReplaceDialog(tk.Toplevel):
         query = self.find_entry.get()
         replacement = self.replace_entry.get()
         if not query: return
-        
-                 
         try:
             sel_first = self.text_widget.index("sel.first")
             sel_last = self.text_widget.index("sel.last")
             current_selection = self.text_widget.get(sel_first, sel_last)
-            
             if current_selection.lower() == query.lower():
-                         
                 self.text_widget.delete(sel_first, sel_last)
                 self.text_widget.insert(sel_first, replacement)
-                
-                         
                 self.live_highlight()
-                
-                         
                 self.find_next()
-                return
+            return
         except tk.TclError:
             pass 
-            
-                 
         self.find_next()
 
     def replace_all(self):
@@ -2122,32 +1736,22 @@ class FindReplaceDialog(tk.Toplevel):
         
         count = 0
         start_idx = '1.0'
-        
-                 
         self.text_widget.config(state=tk.NORMAL)
-        
         while True:
             pos = self.text_widget.search(query, start_idx, stopindex=tk.END, nocase=True)
             if not pos: break
-            
             end_pos = f"{pos}+{len(query)}c"
             self.text_widget.delete(pos, end_pos)
             self.text_widget.insert(pos, replacement)
-            
             start_idx = f"{pos}+{len(replacement)}c"
             count += 1
-            
-                 
         self.live_highlight()
-            
-        tk.messagebox.showinfo("Hoàn tất", f"Đã thay thế {count} mục.", parent=self)
+        messagebox.showinfo("Hoàn tất", f"Đã thay thế {count} mục.", parent=self)
         self.find_entry.focus_set()          
 
-
-class ScriptEditor(tk.Toplevel):
+class ScriptEditor(ctk.CTkToplevel):
     def __init__(self, master, category, script_index, on_save_callback):
         super().__init__(master)
-        
         
         self.content_frame, self.status_bar = setup_custom_window(self, f"Chỉnh sửa Kịch bản: {category}", is_resizable=True, width=1000, height=700)
         
@@ -2158,28 +1762,23 @@ class ScriptEditor(tk.Toplevel):
         self.script_data = copy.deepcopy(script_manager.scripts[category][script_index])
         self.steps = self.script_data['steps']
         self.current_step_index = -1
-        
-        
         self.editing_block_index = -1 
-        
         
         self.setup_ui(self.content_frame)
         self.refresh_blocks()
-        
         
         self.bind('<Control-s>', lambda e: self.save_all())
         self.bind('<Control-f>', lambda e: self.show_find_replace())
 
     def setup_ui(self, parent):
-        self.paned = ttk.PanedWindow(parent, orient=tk.HORIZONTAL)
-        self.paned.pack(fill=tk.BOTH, expand=True, padx=5, pady=5)
+        self.paned = tk.PanedWindow(parent, orient=tk.HORIZONTAL, bg=DARK_BG, sashwidth=4, sashrelief="flat")
+        self.paned.pack(fill="both", expand=True, padx=5, pady=5)
 
-        
-        self.left_frame = ttk.Frame(self.paned, width=250)
-        self.paned.add(self.left_frame, weight=1)
+        self.left_frame = ctk.CTkFrame(self.paned, width=250)
+        self.paned.add(self.left_frame)
 
-        self.toolbar = ttk.Frame(self.left_frame)
-        self.toolbar.pack(fill=tk.X, pady=2)
+        self.toolbar = ctk.CTkFrame(self.left_frame, fg_color="transparent")
+        self.toolbar.pack(fill="x", pady=2)
         
         self.create_tool_btn(self.toolbar, "➕", self.add_block)
         self.create_tool_btn(self.toolbar, "✎", self.rename_current_block)
@@ -2188,60 +1787,50 @@ class ScriptEditor(tk.Toplevel):
         self.create_tool_btn(self.toolbar, "▼", lambda: self.move_block(1))
 
         self.canvas = tk.Canvas(self.left_frame, bg="#282828", highlightthickness=0)
-        self.scrollbar = ttk.Scrollbar(self.left_frame, orient="vertical", command=self.canvas.yview)
-        self.block_container = ttk.Frame(self.canvas)
+        self.scrollbar = ctk.CTkScrollbar(self.left_frame, orientation="vertical", command=self.canvas.yview)
+        self.block_container = ctk.CTkFrame(self.canvas)
         
         self.block_container.bind("<Configure>", lambda e: self.canvas.configure(scrollregion=self.canvas.bbox("all")))
         self.canvas_window = self.canvas.create_window((0, 0), window=self.block_container, anchor="nw", width=230)
         self.canvas.configure(yscrollcommand=self.scrollbar.set)
         
-        self.canvas.pack(side=tk.LEFT, fill=tk.BOTH, expand=True)
-        self.scrollbar.pack(side=tk.RIGHT, fill=tk.Y)
+        self.canvas.pack(side="left", fill="both", expand=True)
+        self.scrollbar.pack(side="right", fill="y")
         self.canvas.bind("<Configure>", lambda e: self.canvas.itemconfig(self.canvas_window, width=e.width))
 
-        
-        self.right_frame = ttk.Frame(self.paned)
-        self.paned.add(self.right_frame, weight=4)
+        self.right_frame = ctk.CTkFrame(self.paned, fg_color="transparent")
+        self.paned.add(self.right_frame)
 
-        header_frame = ttk.Frame(self.right_frame)
-        header_frame.pack(fill=tk.X, pady=(0, 5))
-        self.lbl_step_name = ttk.Label(header_frame, text="Chọn khối để sửa", font=("Segoe UI", 12, "bold"))
-        self.lbl_step_name.pack(side=tk.LEFT)
-        ttk.Label(header_frame, text="Ctrl+S: Lưu | Ctrl+H: Tìm", foreground="#888").pack(side=tk.RIGHT)
+        header_frame = ctk.CTkFrame(self.right_frame, fg_color="transparent")
+        header_frame.pack(fill="x", pady=(0, 5))
+        self.lbl_step_name = ctk.CTkLabel(header_frame, text="Chọn khối để sửa", font=(MAIN_FONT, 12, "bold"))
+        self.lbl_step_name.pack(side="left")
+        ctk.CTkLabel(header_frame, text="Ctrl+S: Lưu | Ctrl+H: Tìm", text_color="#888", font=(MAIN_FONT, 12)).pack(side="right")
 
-        
         self.code_frame = tk.Frame(self.right_frame, bg="#1e1e1e")
-        self.code_frame.pack(fill=tk.BOTH, expand=True)
+        self.code_frame.pack(fill="both", expand=True)
 
-        
-        self.code_scroll = ttk.Scrollbar(self.code_frame, orient="vertical")
-        self.code_scroll.pack(side=tk.RIGHT, fill=tk.Y)
+        self.code_scroll = ctk.CTkScrollbar(self.code_frame, orientation="vertical")
+        self.code_scroll.pack(side="right", fill="y")
 
-        
-        self.h_code_scroll = ttk.Scrollbar(self.code_frame, orient="horizontal")
-        self.h_code_scroll.pack(side=tk.BOTTOM, fill=tk.X)
+        self.h_code_scroll = ctk.CTkScrollbar(self.code_frame, orientation="horizontal")
+        self.h_code_scroll.pack(side="bottom", fill="x")
 
-        
         self.line_numbers = tk.Text(self.code_frame, width=4, padx=5, pady=5, bg="#252526", fg="#858585", 
-                                    bd=0, font=("Consolas", 11), state="disabled", highlightthickness=0)
-        self.line_numbers.pack(side=tk.LEFT, fill=tk.Y)
+                                    bd=0, font=(MAIN_FONT, 11), state="disabled", highlightthickness=0)
+        self.line_numbers.pack(side="left", fill="y")
 
-        
-        
         self.code_text = tk.Text(self.code_frame, bg="#1e1e1e", fg="#d4d4d4", insertbackground="white",
-                                 font=("Consolas", 11), undo=True, autoseparators=True, maxundo=-1,
+                                 font=(MAIN_FONT, 11), undo=True, autoseparators=True, maxundo=-1,
                                  yscrollcommand=self.sync_scroll_code, 
                                  xscrollcommand=self.h_code_scroll.set, 
                                  wrap="none", 
                                  borderwidth=0)
-        
-        self.code_text.pack(side=tk.LEFT, fill=tk.BOTH, expand=True)
+        self.code_text.pack(side="left", fill="both", expand=True)
 
-        
-        self.code_scroll.config(command=self.sync_scroll_bar)
-        self.h_code_scroll.config(command=self.code_text.xview) 
+        self.code_scroll.configure(command=self.sync_scroll_bar)
+        self.h_code_scroll.configure(command=self.code_text.xview) 
 
-        
         self.code_text.bind("<KeyRelease>", self.on_code_change)
         self.code_text.bind("<Tab>", self.insert_spaces)
         self.code_text.bind("<Control-y>", self.redo)
@@ -2251,75 +1840,53 @@ class ScriptEditor(tk.Toplevel):
         self.code_text.bind("<Shift-Tab>", self.unindent)
         self.code_text.bind("<<Selection>>", self.auto_highlight_selection)
         
-        
         self.setup_tags()
 
+        btn_frame = ctk.CTkFrame(self.right_frame, fg_color="transparent")
+        btn_frame.pack(fill="x", pady=5)
         
-        btn_frame = ttk.Frame(self.right_frame)
-        btn_frame.pack(fill=tk.X, pady=5)
-        
-        tk.Button(btn_frame, text="Lưu", command=self.save_all, bg=DARK_THEME['highlight'], fg="black", bd=0, padx=15, pady=5).pack(side=tk.RIGHT, padx=5)
-        tk.Button(btn_frame, text="Hủy", command=self.destroy, bg="#333", fg="white", bd=0, padx=10, pady=5).pack(side=tk.RIGHT, padx=5)
+        ctk.CTkButton(btn_frame, text="Lưu", command=self.save_all, fg_color=ACCENT_COLOR, hover_color=HOVER_COLOR, text_color="black", font=(MAIN_FONT, 12)).pack(side="right", padx=5)
+        ctk.CTkButton(btn_frame, text="Hủy", command=self.destroy, fg_color="#333", hover_color="#444", font=(MAIN_FONT, 12)).pack(side="right", padx=5)
 
     def create_tool_btn(self, parent, text, command):
-        tk.Button(parent, text=text, command=command, bg="#3c3c3c", fg="white", bd=0, width=3).pack(side=tk.LEFT, padx=1)
-
-    
+        ctk.CTkButton(parent, text=text, command=command, fg_color="#3c3c3c", width=30, height=25, font=(MAIN_FONT, 10)).pack(side="left", padx=1)
 
     def refresh_blocks(self):
-        
         for w in self.block_container.winfo_children(): w.destroy()
-
         for i, step in enumerate(self.steps):
-            
             base_bg = "#333333"
             if i == self.current_step_index:
-                base_bg = DARK_THEME['highlight'] 
-            
-            
+                base_bg = ACCENT_COLOR 
             
             frame_bg = "#2b2b2b" if i == self.editing_block_index else base_bg
-            
-            f = tk.Frame(self.block_container, bg=frame_bg, bd=0)
-            f.pack(fill=tk.X, pady=1, padx=2)
+            f = ctk.CTkFrame(self.block_container, fg_color=frame_bg)
+            f.pack(fill="x", pady=1, padx=2)
 
-            
             if i == self.editing_block_index:
-                
-                entry = tk.Entry(f, bg="#4a4a4a", fg="white", insertbackground="white", bd=0, font=("ZFVCutiegirl", 10))
-                entry.pack(side=tk.LEFT, fill=tk.X, expand=True, padx=2, ipady=4)
+                entry = ctk.CTkEntry(f, height=28, font=(MAIN_FONT, 12))
+                entry.pack(side="left", fill="x", expand=True, padx=2)
                 entry.insert(0, step['name'])
-                entry.select_range(0, tk.END)
                 entry.focus_set()
+                
+                ctk.CTkButton(f, text="✓", command=lambda idx=i, ent=entry: self.save_block_name(idx, ent.get()),
+                          fg_color="#6a9955", width=30, height=25, font=(MAIN_FONT, 10)).pack(side="right", padx=1)
+                
+                ctk.CTkButton(f, text="✘", command=self.cancel_block_rename,
+                          fg_color="#cc3333", width=30, height=25, font=(MAIN_FONT, 10)).pack(side="right", padx=1)
 
-                
-                tk.Button(f, text="✓", command=lambda idx=i, ent=entry: self.save_block_name(idx, ent.get()),
-                          bg="#6a9955", fg="white", bd=0, width=3).pack(side=tk.RIGHT, padx=1)
-                
-                
-                tk.Button(f, text="✘", command=self.cancel_block_rename,
-                          bg="#cc3333", fg="white", bd=0, width=3).pack(side=tk.RIGHT, padx=1)
-
-                
                 entry.bind("<Return>", lambda e, idx=i, ent=entry: self.save_block_name(idx, ent.get()))
                 entry.bind("<Escape>", lambda e: self.cancel_block_rename())
-
-            
             else:
                 fg_color = "black" if i == self.current_step_index else "white"
-                font_style = ("ZFVCutiegirl", 10, "bold") if i == self.current_step_index else ("ZFVCutiegirl", 10)
+                font_style = (MAIN_FONT, 10, "bold") if i == self.current_step_index else (MAIN_FONT, 10)
                 
-                
-                lbl = tk.Label(f, text=f"{i+1}. {step['name']}", bg=frame_bg, fg=fg_color, font=font_style, anchor="w", padx=10, pady=8)
-                lbl.pack(fill=tk.BOTH, expand=True)
-                
+                lbl = ctk.CTkLabel(f, text=f"{i+1}. {step['name']}", text_color=fg_color, font=font_style, anchor="w")
+                lbl.pack(fill="both", expand=True, padx=10, pady=5)
                 
                 lbl.bind("<Button-1>", lambda e, idx=i: self.select_block(idx))
-                
                 lbl.bind("<Double-Button-1>", lambda e, idx=i: self.start_block_rename(idx))
 
     def add_block(self):
-        
         base_name = "Bước mới"
         count = 1
         existing_names = [s['name'] for s in self.steps]
@@ -2328,18 +1895,12 @@ class ScriptEditor(tk.Toplevel):
             count += 1
             new_name = f"{base_name} {count}"
 
-        
         self.steps.append({"name": new_name, "code": "# Code python here\npass"})     
-        
-        
         new_index = len(self.steps) - 1
         self.select_block(new_index)
-        
-        
         self.start_block_rename(new_index)
 
     def rename_current_block(self):
-        
         if self.current_step_index >= 0:
             self.start_block_rename(self.current_step_index)
 
@@ -2350,15 +1911,14 @@ class ScriptEditor(tk.Toplevel):
     def save_block_name(self, index, new_name):
         new_name = new_name.strip()
         if not new_name:
-            tk.messagebox.showwarning("Lỗi", "Tên khối không được để trống!", parent=self)
+            messagebox.showwarning("Lỗi", "Tên khối không được để trống!", parent=self)
             return
         
         self.steps[index]['name'] = new_name
         self.editing_block_index = -1
         
-        
         if index == self.current_step_index:
-            self.lbl_step_name.config(text=f"Editing: {new_name}")
+            self.lbl_step_name.configure(text=f"Editing: {new_name}")
             
         self.refresh_blocks()
 
@@ -2368,24 +1928,20 @@ class ScriptEditor(tk.Toplevel):
 
     def delete_block(self):
         if self.current_step_index >= 0:
-            if tk.messagebox.askyesno("Xác nhận", "Xóa khối lệnh này?", parent=self):
+            if messagebox.askyesno("Xác nhận", "Xóa khối lệnh này?", parent=self):
                 del self.steps[self.current_step_index]
-                
-                
                 self.current_step_index = -1
                 self.editing_block_index = -1
-                self.lbl_step_name.config(text="Chọn khối để sửa")
+                self.lbl_step_name.configure(text="Chọn khối để sửa")
                 self.code_text.delete(1.0, tk.END)
-                
                 self.refresh_blocks()
 
     def select_block(self, index):
-        
         if self.editing_block_index != -1 and self.editing_block_index != index:
             self.cancel_block_rename()
 
         self.current_step_index = index
-        self.lbl_step_name.config(text=f"Editing: {self.steps[index]['name']}")
+        self.lbl_step_name.configure(text=f"Editing: {self.steps[index]['name']}")
         
         self.code_text.delete(1.0, tk.END)
         self.code_text.insert(tk.END, self.steps[index]['code'])
@@ -2400,16 +1956,11 @@ class ScriptEditor(tk.Toplevel):
         if idx < 0: return
         new_idx = idx + direction
         if 0 <= new_idx < len(self.steps):
-            
             self.steps[idx], self.steps[new_idx] = self.steps[new_idx], self.steps[idx]
-            
-            
             if self.editing_block_index == idx:
                 self.editing_block_index = new_idx
-                
             self.select_block(new_idx)
 
-    
     def setup_tags(self):
         self.code_text.tag_configure("keyword", foreground="#569cd6")
         self.code_text.tag_configure("string", foreground="#ce9178")
@@ -2422,32 +1973,24 @@ class ScriptEditor(tk.Toplevel):
 
     def unindent(self, event):
         try:
-                     
             try:
                 index_start = self.code_text.index("sel.first")
                 index_end = self.code_text.index("sel.last")
             except tk.TclError:
-                         
                 index_start = self.code_text.index("insert")
                 index_end = index_start
 
             start_line = int(index_start.split('.')[0])
             end_line = int(index_end.split('.')[0])
             
-                     
             if index_end.split('.')[1] == '0' and start_line != end_line:
                 end_line -= 1
 
-                     
             for line in range(start_line, end_line + 1):
-                         
                 start_pos = f"{line}.0"
                 end_pos = f"{line}.4"
                 text_start = self.code_text.get(start_pos, end_pos)
-                
-                         
                 if not text_start.strip(): 
-                             
                     self.code_text.delete(start_pos, f"{line}.{len(text_start)}")
 
             return "break"          
@@ -2455,35 +1998,21 @@ class ScriptEditor(tk.Toplevel):
             return "break"
 
     def auto_highlight_selection(self, event=None):
-                 
         self.code_text.tag_remove("match", "1.0", tk.END)
-        
         try:
-                     
             if not self.code_text.tag_ranges("sel"):
                 return
-            
             selected_text = self.code_text.get("sel.first", "sel.last").strip()
-            
-                     
             if len(selected_text) < 2 or len(selected_text) > 50:
                 return
-
-                     
             start_pos = "1.0"
             while True:
                 pos = self.code_text.search(selected_text, start_pos, stopindex=tk.END, nocase=False)
                 if not pos:
                     break
-                
                 end_pos = f"{pos}+{len(selected_text)}c"
-                
-                         
-                         
                 self.code_text.tag_add("match", pos, end_pos)
-                
                 start_pos = end_pos
-                
         except tk.TclError:
             pass
 
@@ -2527,28 +2056,18 @@ class ScriptEditor(tk.Toplevel):
         self._highlight_job = self.after(200, self.highlight_syntax)
 
     def insert_spaces(self, event):
-                 
         try:
             sel_start = self.code_text.index("sel.first")
             sel_end = self.code_text.index("sel.last")
         except tk.TclError:
-                     
             self.code_text.insert(tk.INSERT, "    ")
             return 'break'
-
-                 
         start_line = int(sel_start.split('.')[0])
         end_line = int(sel_end.split('.')[0])
-        
-                 
         if sel_end.split('.')[1] == '0' and start_line != end_line:
             end_line -= 1
-
-                 
         for line in range(start_line, end_line + 1):
             self.code_text.insert(f"{line}.0", "    ")
-        
-                 
         return 'break'
 
     def redo(self, event=None):
@@ -2572,7 +2091,50 @@ class ScriptEditor(tk.Toplevel):
         script_manager.save_scripts()
         if self.on_save_callback: self.on_save_callback()
 
+class VideoPlayer:
+    def __init__(self, parent, video_path, width=199, height=150):
+        self.parent = parent
+        self.video_path = video_path
+        self.width = width
+        self.height = height
+        self.cap = None
+        self.is_playing = False
+        self.label = ctk.CTkLabel(parent, text="")
+        self.label.pack_forget() 
+
+    def start(self):
+        if not os.path.exists(self.video_path):
+            logger.warning(f"Không tìm thấy video animation: {self.video_path}")
+            return
+        self.cap = cv2.VideoCapture(self.video_path)
+        self.is_playing = True
+        self.label.pack(pady=10, side="bottom") 
+        self.update_frame()
+
+    def stop(self):
+        self.is_playing = False
+        if self.cap:
+            self.cap.release()
+        self.label.pack_forget()
+        self.label.configure(image=None)
+
+    def update_frame(self):
+        if not self.is_playing or not self.cap:
+            return
+        ret, frame = self.cap.read()
+        if not ret:
+            self.cap.set(cv2.CAP_PROP_POS_FRAMES, 0)
+            ret, frame = self.cap.read()
+        
+        if ret:
+            frame = cv2.resize(frame, (self.width, self.height))
+            frame = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
+            img = Image.fromarray(frame)
+            imgtk = ImageTk.PhotoImage(image=img)
+            self.label.imgtk = imgtk 
+            self.label.configure(image=imgtk)
+            self.label.after(33, self.update_frame)
+
 if __name__ == "__main__":
-    root = tk.Tk()
-    app = AutoACSTool(root)
-    root.mainloop()
+    app = AutoACSTool()
+    app.mainloop()
