@@ -20,7 +20,7 @@ ctk.set_appearance_mode("Dark")
 ctk.set_default_color_theme("dark-blue")
 
 APP_NAME = "ACS Auto"
-VERSION = "2.1.0"
+VERSION = "2.1.1"
 ACCENT_COLOR = "#c48b9a"
 HOVER_COLOR = "#db9aaa"
 DARK_BG = "#1e1e1e"
@@ -869,13 +869,12 @@ class AutoACSTool(ctk.CTk):
         left_frame = ctk.CTkFrame(tab)
         left_frame.grid(row=0, column=0, sticky="nsew", padx=5, pady=5)
 
-        ctk.CTkLabel(left_frame, text="Danh sách Key:", font=(MAIN_FONT, 14, "bold")).pack(anchor="w", pady=5, padx=5)
+        ctk.CTkLabel(left_frame, text="Danh sách Key", font=(MAIN_FONT, 14, "bold")).pack(anchor="w", pady=5, padx=5)
 
         listbox_container = ctk.CTkFrame(left_frame, fg_color="transparent")
         listbox_container.pack(fill="both", expand=True, padx=5, pady=5)
         
-        self.keys_listbox = tk.Listbox(listbox_container, bg=FRAME_BG, fg="white", font=(MAIN_FONT, 10),
-                                       selectbackground=ACCENT_COLOR, bd=0, highlightthickness=0, exportselection=False)
+        self.keys_listbox = tk.Listbox(listbox_container, bg=FRAME_BG, fg="white", font=(MAIN_FONT, 10), selectbackground=ACCENT_COLOR, bd=0, highlightthickness=0, exportselection=False)
         self.keys_listbox.pack(side="left", fill="both", expand=True)
         
         scrollbar = ctk.CTkScrollbar(listbox_container, command=self.keys_listbox.yview)
@@ -886,9 +885,9 @@ class AutoACSTool(ctk.CTk):
         btn_key_frame = ctk.CTkFrame(left_frame, fg_color="transparent")
         btn_key_frame.pack(fill="x", pady=5, padx=5)
         
-        ctk.CTkButton(btn_key_frame, text="➕", width=40, command=self.add_new_key, fg_color=BUTTON_BG, hover_color=HOVER_COLOR, font=(MAIN_FONT, 12)).pack(side="left", padx=2)
-        ctk.CTkButton(btn_key_frame, text="✎", width=40, command=self.rename_current_key, fg_color=BUTTON_BG, hover_color=HOVER_COLOR, font=(MAIN_FONT, 12)).pack(side="left", padx=2)
-        ctk.CTkButton(btn_key_frame, text="🗑", width=40, command=self.delete_current_key, fg_color="#cc3333", hover_color="#aa2222", font=(MAIN_FONT, 12)).pack(side="left", padx=2)
+        ctk.CTkButton(btn_key_frame, text="➕", width=50, command=self.add_new_key, fg_color=BUTTON_BG, hover_color=HOVER_COLOR, font=(MAIN_FONT, 12)).pack(side="left", padx=5, pady=5)
+        ctk.CTkButton(btn_key_frame, text="✎", width=50, command=self.rename_current_key, fg_color=BUTTON_BG, hover_color=HOVER_COLOR, font=(MAIN_FONT, 12)).pack(side="left", padx=5, pady=5)
+        ctk.CTkButton(btn_key_frame, text="🗑", width=50, command=self.delete_current_key, fg_color="#cc3333", hover_color="#aa2222", font=(MAIN_FONT, 12)).pack(side="left", padx=5, pady=5)
 
         right_frame = ctk.CTkFrame(tab)
         right_frame.grid(row=0, column=1, sticky="nsew", padx=5, pady=5)
@@ -901,15 +900,15 @@ class AutoACSTool(ctk.CTk):
         def add_gen_entry(parent, label, attr_name, default_val):
             f = ctk.CTkFrame(parent, fg_color="transparent")
             f.pack(fill="x", pady=2)
-            ctk.CTkLabel(f, text=label, width=120, anchor="w", font=(MAIN_FONT, 12)).pack(side="left")
+            ctk.CTkLabel(f, text=label, width=150, anchor="w", font=(MAIN_FONT, 12)).pack(side="left")
             entry = ctk.CTkEntry(f, font=(MAIN_FONT, 12))
             entry.pack(side="left", fill="x", expand=True)
             entry.insert(0, default_val)
             setattr(self, attr_name, entry)
 
-        add_gen_entry(gen_frame, "Delay chụp m.hình", "screenshot_delay_entry", config_manager.get('GENERAL', 'screenshot_delay_sec'))
+        add_gen_entry(gen_frame, "Delay chụp màn hình", "screenshot_delay_entry", config_manager.get('GENERAL', 'screenshot_delay_sec'))
         add_gen_entry(gen_frame, "Delay thao tác", "action_delay_entry", config_manager.get('GENERAL', 'action_delay_sec'))
-        add_gen_entry(gen_frame, "Độ tin cậy (0 - 1)", "confidence_entry", config_manager.get('GENERAL', 'find_image_confidence'))
+        add_gen_entry(gen_frame, "Độ tin cậy (0.0 - 1.0)", "confidence_entry", config_manager.get('GENERAL', 'find_image_confidence'))
 
         ctk.CTkProgressBar(right_frame, height=2, progress_color=ACCENT_COLOR).pack(fill="x", pady=10, padx=10)
 
@@ -933,7 +932,7 @@ class AutoACSTool(ctk.CTk):
         ctk.CTkButton(btn_img_frame, text="🗑 Xóa ảnh", command=self.remove_image_from_key, fg_color="#cc3333", hover_color="#aa2222", font=(MAIN_FONT, 14, "bold")).pack(fill="x", expand=True, side="left", padx=5)
 
         save_btn = ctk.CTkButton(right_frame, text="💾 LƯU TOÀN BỘ CÀI ĐẶT", command=self.save_settings_dynamic, fg_color=ACCENT_COLOR, hover_color=HOVER_COLOR, font=(MAIN_FONT, 14, "bold"))
-        save_btn.pack(fill="x", pady=10, padx=5)
+        save_btn.pack(fill="x", pady=10, padx=10)
 
         self.refresh_keys_list()
 
@@ -1127,18 +1126,20 @@ class AutoACSTool(ctk.CTk):
                 new_width, new_height = int(original_width * ratio), int(original_height * ratio)
                 pil_image = pil_image.resize((new_width, new_height), Image.Resampling.LANCZOS)
             
-            self.suki_image_ref = ImageTk.PhotoImage(pil_image)
+            self.suki_image_ref = ctk.CTkImage(light_image=pil_image, dark_image=pil_image, size=(new_width, new_height))
             ctk.CTkLabel(content_frame, image=self.suki_image_ref, text="").pack(pady=(20, 10))
         except:
             pass
 
     def stop_all_automation(self):
-        try:
+        if acs_auto.stop_requested == False:
             acs_auto.stop_requested = True
             logger.info("🛑 Đã dừng.")
-            logger.warning("Dừng toàn bộ quá trình!")
-        except Exception as e:
-            logger.error(f"Lỗi khi dừng bằng ESC: {e}")
+        else:
+            acs_auto.stop_requested = False
+            logger.info("▶ Hủy dừng.")
+
+        
 
     def schedule_update(self, delay, trigger):
         if hasattr(self, 'after_id') and self.after_id:
@@ -1222,8 +1223,7 @@ class AutoACSTool(ctk.CTk):
         if os.path.exists(icon_path):
             try:
                 pil_icon = Image.open(icon_path)
-                pil_icon = pil_icon.resize((24, 24), Image.Resampling.LANCZOS)
-                self.title_icon_img = ImageTk.PhotoImage(pil_icon)
+                self.title_icon_img = ctk.CTkImage(light_image=pil_icon, dark_image=pil_icon, size=(24, 24))
                 ctk.CTkLabel(self.title_bar, image=self.title_icon_img, text="").pack(side="left", padx=5, pady=2)
             except: pass
         
@@ -1405,7 +1405,7 @@ def setup_custom_window(window, title_text, is_resizable=False, width=None, heig
         icon_path = os.path.join(os.path.dirname(__file__), config_manager.get('GENERAL', 'icon_folder'), 'app.ico')
         if os.path.exists(icon_path):
             pil_icon = Image.open(icon_path).resize((18, 18), Image.Resampling.LANCZOS)
-            window.icon_img_ref = ImageTk.PhotoImage(pil_icon) 
+            window.icon_img_ref = ctk.CTkImage(light_image=pil_icon, dark_image=pil_icon, size=(18, 18))
             ctk.CTkLabel(title_bar, image=window.icon_img_ref, text="").pack(side="left", padx=(5, 5))
     except: pass
 
@@ -2127,12 +2127,11 @@ class VideoPlayer:
             ret, frame = self.cap.read()
         
         if ret:
-            frame = cv2.resize(frame, (self.width, self.height))
             frame = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
             img = Image.fromarray(frame)
-            imgtk = ImageTk.PhotoImage(image=img)
-            self.label.imgtk = imgtk 
-            self.label.configure(image=imgtk)
+            ctk_img = ctk.CTkImage(light_image=img, dark_image=img, size=(self.width, self.height))
+            self.label.configure(image=ctk_img)
+            self.label.image = ctk_img
             self.label.after(33, self.update_frame)
 
 if __name__ == "__main__":
