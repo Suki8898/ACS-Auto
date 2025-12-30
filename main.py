@@ -20,7 +20,7 @@ ctk.set_appearance_mode("Dark")
 ctk.set_default_color_theme("dark-blue")
 
 APP_NAME = "ACS Auto"
-VERSION = "2.1.1"
+VERSION = "2.1.2"
 ACCENT_COLOR = "#c48b9a"
 HOVER_COLOR = "#db9aaa"
 DARK_BG = "#1e1e1e"
@@ -1673,7 +1673,7 @@ class FindReplaceDialog(ctk.CTkToplevel):
         main_frame.grid_columnconfigure(1, weight=1)
 
         btn_frame = ctk.CTkFrame(self.content_frame, fg_color="transparent")
-        btn_frame.pack(fill="x", side="bottom", padx=20, pady=20)
+        btn_frame.pack(fill="x", side="bottom", padx=10, pady=10)
 
         def create_btn(parent, text, cmd):
             btn = ctk.CTkButton(parent, text=text, command=cmd, height=30, fg_color="#333", hover_color="#444", font=(MAIN_FONT, 12))
@@ -1805,7 +1805,7 @@ class ScriptEditor(ctk.CTkToplevel):
         header_frame.pack(fill="x", pady=(0, 5))
         self.lbl_step_name = ctk.CTkLabel(header_frame, text="Chọn khối để sửa", font=(MAIN_FONT, 12, "bold"))
         self.lbl_step_name.pack(side="left")
-        ctk.CTkLabel(header_frame, text="Ctrl+S: Lưu | Ctrl+H: Tìm", text_color="#888", font=(MAIN_FONT, 12)).pack(side="right")
+        ctk.CTkLabel(header_frame, text="Ctrl+S: Lưu | Ctrl+F: Tìm", text_color="#888", font=(MAIN_FONT, 12)).pack(side="right")
 
         self.code_frame = tk.Frame(self.right_frame, bg="#1e1e1e")
         self.code_frame.pack(fill="both", expand=True)
