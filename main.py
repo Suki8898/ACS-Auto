@@ -20,9 +20,9 @@ ctk.set_appearance_mode("Dark")
 ctk.set_default_color_theme("dark-blue")
 
 APP_NAME = "ACS Auto"
-VERSION = "2.1.2"
+VERSION = "2.2.0"
 ACCENT_COLOR = "#c48b9a"
-HOVER_COLOR = "#db9aaa"
+HOVER_COLOR = "#4a4a4a"
 DARK_BG = "#1e1e1e"
 FRAME_BG = "#2b2b2b"
 BUTTON_BG = "#3a3a3a"
@@ -148,6 +148,37 @@ config_manager = ConfigManager()
 
 
 pyautogui.FAILSAFE = True
+
+class IconManager:
+    def __init__(self):
+        self.image_folder = os.path.join(os.path.dirname(__file__), config_manager.get('GENERAL', 'icon_folder'))
+
+        self.add = self.load_icon("add.png", size=(20, 20))
+        self.edit = self.load_icon("edit.png", size=(20, 20))
+        self.delete = self.load_icon("delete.png", size=(20, 20))
+        self.save = self.load_icon("save.png", size=(20, 20))
+        self.photo = self.load_icon("photo.png", size=(20, 20))
+        self.up = self.load_icon("up.png", size=(20, 20))
+        self.down = self.load_icon("down.png", size=(20, 20))
+        self.file = self.load_icon("file.png", size=(20, 20))
+        self.excel = self.load_icon("excel.png", size=(20, 20))
+        self.code = self.load_icon("code.png", size=(20, 20))
+        self.check = self.load_icon("check.png", size=(20, 20))
+        self.x = self.load_icon("x.png", size=(20, 20))
+
+    def load_icon(self, filename, size=(20, 20)):
+        try:
+            path = os.path.join(self.image_folder, filename)
+            if os.path.exists(path):
+                pil_image = Image.open(path)
+                return ctk.CTkImage(light_image=pil_image, dark_image=pil_image, size=size)
+            else:
+                return None
+        except Exception as e:
+            logger.error(f"Lỗi tải icon {filename}: {e}")
+            return None
+
+icons = IconManager()
 
 class ACSAutomation:
     def __init__(self):
@@ -706,13 +737,13 @@ class AutoACSTool(ctk.CTk):
         left_col.pack(side="left", fill="both", expand=True, padx=(0,5))
 
         btn_frame_1 = ctk.CTkFrame(left_col, fg_color="transparent")
-        btn_frame_1.pack(pady=10, fill="x", padx=5)
+        btn_frame_1.pack(fill="x", padx=5)
         
         self.btn_uid_col1 = ctk.CTkButton(btn_frame_1, text="Ghi UID (F1)", fg_color=BUTTON_BG, hover_color=HOVER_COLOR, font=(MAIN_FONT, 14, "bold"),
             command=lambda: self.execute_category_script("uid_col1", self.get_uid_col1_context))
         self.btn_uid_col1.pack(side="left", fill="x", expand=True)
         
-        btn_script_1 = ctk.CTkButton(btn_frame_1, text="📄", width=40, fg_color=BUTTON_BG, hover_color=HOVER_COLOR, font=(MAIN_FONT, 14),
+        btn_script_1 = ctk.CTkButton(btn_frame_1, text="", image=icons.file, compound="left", width=40, fg_color=BUTTON_BG, hover_color=HOVER_COLOR, font=(MAIN_FONT, 14),
             command=lambda: ScriptSelector(self, "uid_col1", lambda: None))
         btn_script_1.pack(side="left", padx=(5,0))
 
@@ -738,13 +769,13 @@ class AutoACSTool(ctk.CTk):
         right_col.pack(side="left", fill="both", expand=True, padx=(5,0))
 
         btn_frame_2 = ctk.CTkFrame(right_col, fg_color="transparent")
-        btn_frame_2.pack(pady=10, fill="x", padx=5)
+        btn_frame_2.pack(fill="x", padx=5)
 
         self.btn_uid_col2 = ctk.CTkButton(btn_frame_2, text="Ghi UID (F2)", fg_color=BUTTON_BG, hover_color=HOVER_COLOR, font=(MAIN_FONT, 14, "bold"),
             command=lambda: self.execute_category_script("uid_col2", self.get_uid_col2_context))
         self.btn_uid_col2.pack(side="left", fill="x", expand=True)
 
-        btn_script_2 = ctk.CTkButton(btn_frame_2, text="📄", width=40, fg_color=BUTTON_BG, hover_color=HOVER_COLOR, font=(MAIN_FONT, 14),
+        btn_script_2 = ctk.CTkButton(btn_frame_2, text="", image=icons.file, compound="left", width=40, fg_color=BUTTON_BG, hover_color=HOVER_COLOR, font=(MAIN_FONT, 14),
             command=lambda: ScriptSelector(self, "uid_col2", lambda: None))
         btn_script_2.pack(side="left", padx=(5,0))
 
@@ -802,13 +833,13 @@ class AutoACSTool(ctk.CTk):
 
         def create_config_btn_row(parent, btn_text, script_cat, context_func):
             row_frame = ctk.CTkFrame(parent, fg_color="transparent")
-            row_frame.pack(pady=5, fill="x", padx=5)
+            row_frame.pack(pady=5, fill="x", padx=10)
             
             btn_run = ctk.CTkButton(row_frame, text=btn_text, fg_color=BUTTON_BG, hover_color=HOVER_COLOR, font=(MAIN_FONT, 14, "bold"),
                 command=lambda: self.execute_category_script(script_cat, context_func))
             btn_run.pack(side="left", fill="x", expand=True)
 
-            btn_script = ctk.CTkButton(row_frame, text="📄", width=40, fg_color=BUTTON_BG, hover_color=HOVER_COLOR, font=(MAIN_FONT, 14),
+            btn_script = ctk.CTkButton(row_frame, text="", image=icons.file, compound="left", width=40, fg_color=BUTTON_BG, hover_color=HOVER_COLOR, font=(MAIN_FONT, 14),
                 command=lambda: ScriptSelector(self, script_cat, lambda: None))
             btn_script.pack(side="left", padx=(5, 0))
             return btn_run
@@ -823,7 +854,7 @@ class AutoACSTool(ctk.CTk):
         excel_frame.pack(fill="x", padx=5, pady=5)
         ctk.CTkLabel(excel_frame, text="Danh sách địa chỉ", font=(MAIN_FONT, 12, "bold")).pack(anchor="w", padx=10, pady=(5,0))
 
-        self.btn_import_excel = ctk.CTkButton(excel_frame, text="Nhập File Excel (.xlsx)", command=self.import_excel_gui, fg_color=BUTTON_BG, hover_color=HOVER_COLOR, font=(MAIN_FONT, 14, "bold"))
+        self.btn_import_excel = ctk.CTkButton(excel_frame, text="Nhập File Excel", image=icons.excel, compound="left", command=self.import_excel_gui, fg_color=BUTTON_BG, hover_color=HOVER_COLOR, font=(MAIN_FONT, 14, "bold"))
         self.btn_import_excel.pack(pady=5, fill="x", padx=10)
 
         self.excel_status_var = ctk.StringVar()
@@ -885,9 +916,9 @@ class AutoACSTool(ctk.CTk):
         btn_key_frame = ctk.CTkFrame(left_frame, fg_color="transparent")
         btn_key_frame.pack(fill="x", pady=5, padx=5)
         
-        ctk.CTkButton(btn_key_frame, text="➕", width=50, command=self.add_new_key, fg_color=BUTTON_BG, hover_color=HOVER_COLOR, font=(MAIN_FONT, 12)).pack(side="left", padx=5, pady=5)
-        ctk.CTkButton(btn_key_frame, text="✎", width=50, command=self.rename_current_key, fg_color=BUTTON_BG, hover_color=HOVER_COLOR, font=(MAIN_FONT, 12)).pack(side="left", padx=5, pady=5)
-        ctk.CTkButton(btn_key_frame, text="🗑", width=50, command=self.delete_current_key, fg_color="#cc3333", hover_color="#aa2222", font=(MAIN_FONT, 12)).pack(side="left", padx=5, pady=5)
+        ctk.CTkButton(btn_key_frame, text="", image=icons.add, compound="left", width=50, command=self.add_new_key, fg_color=BUTTON_BG, hover_color=HOVER_COLOR, font=(MAIN_FONT, 12)).pack(side="left", padx=5, pady=5)
+        ctk.CTkButton(btn_key_frame, text="", image=icons.edit, compound="left", width=50, command=self.rename_current_key, fg_color=BUTTON_BG, hover_color=HOVER_COLOR, font=(MAIN_FONT, 12)).pack(side="left", padx=5, pady=5)
+        ctk.CTkButton(btn_key_frame, text="", image=icons.delete, compound="left", width=50, command=self.delete_current_key, fg_color="#cc3333", hover_color="#aa2222", font=(MAIN_FONT, 12)).pack(side="left", padx=5, pady=5)
 
         right_frame = ctk.CTkFrame(tab)
         right_frame.grid(row=0, column=1, sticky="nsew", padx=5, pady=5)
@@ -928,10 +959,10 @@ class AutoACSTool(ctk.CTk):
         btn_img_frame = ctk.CTkFrame(right_frame, fg_color="transparent")
         btn_img_frame.pack(fill="x", pady=5, padx=5)
 
-        ctk.CTkButton(btn_img_frame, text="📂 Thêm ảnh", command=self.add_image_to_key, fg_color=BUTTON_BG, hover_color=HOVER_COLOR, font=(MAIN_FONT, 14, "bold")).pack(fill="x", expand=True, side="left", padx=5)
-        ctk.CTkButton(btn_img_frame, text="🗑 Xóa ảnh", command=self.remove_image_from_key, fg_color="#cc3333", hover_color="#aa2222", font=(MAIN_FONT, 14, "bold")).pack(fill="x", expand=True, side="left", padx=5)
+        ctk.CTkButton(btn_img_frame, text="Thêm ảnh", image=icons.photo, compound="left", command=self.add_image_to_key, fg_color=BUTTON_BG, hover_color=HOVER_COLOR, font=(MAIN_FONT, 14, "bold")).pack(fill="x", expand=True, side="left", padx=5)
+        ctk.CTkButton(btn_img_frame, text="Xóa ảnh", image=icons.delete, compound="left", command=self.remove_image_from_key, fg_color="#cc3333", hover_color="#aa2222", font=(MAIN_FONT, 14, "bold")).pack(fill="x", expand=True, side="left", padx=5)
 
-        save_btn = ctk.CTkButton(right_frame, text="💾 LƯU TOÀN BỘ CÀI ĐẶT", command=self.save_settings_dynamic, fg_color=ACCENT_COLOR, hover_color=HOVER_COLOR, font=(MAIN_FONT, 14, "bold"))
+        save_btn = ctk.CTkButton(right_frame, text="LƯU TOÀN BỘ CÀI ĐẶT", image=icons.save, compound="left", command=self.save_settings_dynamic, fg_color="#6a9955", hover_color="#88c46d", font=(MAIN_FONT, 14, "bold"))
         save_btn.pack(fill="x", pady=10, padx=10)
 
         self.refresh_keys_list()
@@ -1139,8 +1170,6 @@ class AutoACSTool(ctk.CTk):
             acs_auto.stop_requested = False
             logger.info("▶ Hủy dừng.")
 
-        
-
     def schedule_update(self, delay, trigger):
         if hasattr(self, 'after_id') and self.after_id:
             self.after_cancel(self.after_id)
@@ -1156,6 +1185,9 @@ class AutoACSTool(ctk.CTk):
             elif trigger == "led":
                 led_value = int(self.led_entry.get()) if self.led_entry.get() else None
                 row_number = next((i for i, row in enumerate(acs_auto.excel_data) if row['Led'] == led_value), None) if led_value else None
+            elif trigger == "dmx2vfd":
+                dmx2vfd_value = int(self.dmx2vfd_entry.get()) if self.dmx2vfd_entry.get() else None
+                row_number = next((i for i, row in enumerate(acs_auto.excel_data) if row['Dmx2Vfd'] == dmx2vfd_value), None) if dmx2vfd_value else None
             else:
                 return
             
@@ -1489,12 +1521,10 @@ class ScriptSelector(ctk.CTkToplevel):
         btn_frame = ctk.CTkFrame(self.content_frame, fg_color="transparent")
         btn_frame.pack(fill="x", pady=10, padx=10)
         
-        btn_new = ctk.CTkButton(btn_frame, text="➕ Tạo kịch bản mới", command=self.create_new, 
-                            fg_color=ACCENT_COLOR, hover_color=HOVER_COLOR, text_color="black", font=(MAIN_FONT, 12))
+        btn_new = ctk.CTkButton(btn_frame, text="Tạo kịch bản mới", command=self.create_new, fg_color=ACCENT_COLOR, hover_color=HOVER_COLOR, text_color="black", font=(MAIN_FONT, 12))
         btn_new.pack(side="left")
-        
-        btn_close = ctk.CTkButton(btn_frame, text="Đóng", command=self.destroy,
-                              fg_color="#cc3333", hover_color="#aa2222", font=(MAIN_FONT, 12))
+
+        btn_close = ctk.CTkButton(btn_frame, text="Đóng", command=self.destroy, fg_color="#cc3333", hover_color="#aa2222", font=(MAIN_FONT, 12))
         btn_close.pack(side="right")
 
         self.refresh_list()
@@ -1547,19 +1577,19 @@ class ScriptSelector(ctk.CTkToplevel):
             btn_box.pack(side="right", padx=5)
 
             if i == self.editing_index:
-                ctk.CTkButton(btn_box, text="✓", font=(MAIN_FONT, 9, 'bold'), fg_color="#6a9955", width=30, height=25,
+                ctk.CTkButton(btn_box, text="", image=icons.check, compound="left", font=(MAIN_FONT, 9, 'bold'), fg_color="#6a9955", width=30, height=25,
                           command=lambda idx=i, ent=entry_name: self.save_name(idx, ent.get())).pack(side="left", padx=1)
-                ctk.CTkButton(btn_box, text="✘", font=(MAIN_FONT, 9, 'bold'), fg_color="#cc3333", width=30, height=25,
+                ctk.CTkButton(btn_box, text="", image=icons.x, compound="left", font=(MAIN_FONT, 9, 'bold'), fg_color="#cc3333", width=30, height=25,
                           command=self.cancel_rename).pack(side="left", padx=1)
             else:
-                ctk.CTkButton(btn_box, text="🖋️", font=(MAIN_FONT, 9), fg_color="#4a4a4a", width=30, height=25,
+                ctk.CTkButton(btn_box, text="", image=icons.edit, compound="left", font=(MAIN_FONT, 9), fg_color="#4a4a4a", width=30, height=25,
                           command=lambda idx=i: self.start_rename(idx)).pack(side="left", padx=1)
-                
-                ctk.CTkButton(btn_box, text="Code", font=(MAIN_FONT, 9), fg_color=ACCENT_COLOR, text_color="black", width=40, height=25,
+
+                ctk.CTkButton(btn_box, text="", image=icons.code, compound="left", font=(MAIN_FONT, 9), fg_color=ACCENT_COLOR, text_color="black", width=40, height=25,
                           command=lambda idx=i: self.edit_content(idx)).pack(side="left", padx=1)
                 
                 if len(self.scripts_list) > 1:
-                    ctk.CTkButton(btn_box, text="🗑", font=(MAIN_FONT, 9), fg_color="#cc3333", width=30, height=25,
+                    ctk.CTkButton(btn_box, text="", image=icons.delete, compound="left", font=(MAIN_FONT, 9), fg_color="#cc3333", width=30, height=25,
                               command=lambda idx=i: self.delete_script(idx)).pack(side="left", padx=1)
 
     def create_new(self):
@@ -1780,11 +1810,11 @@ class ScriptEditor(ctk.CTkToplevel):
         self.toolbar = ctk.CTkFrame(self.left_frame, fg_color="transparent")
         self.toolbar.pack(fill="x", pady=2)
         
-        self.create_tool_btn(self.toolbar, "➕", self.add_block)
-        self.create_tool_btn(self.toolbar, "✎", self.rename_current_block)
-        self.create_tool_btn(self.toolbar, "🗑", self.delete_block)
-        self.create_tool_btn(self.toolbar, "▲", lambda: self.move_block(-1))
-        self.create_tool_btn(self.toolbar, "▼", lambda: self.move_block(1))
+        self.create_tool_btn(self.toolbar, "", command=self.add_block, image=icons.add)
+        self.create_tool_btn(self.toolbar, "", command=self.rename_current_block, image=icons.edit)
+        self.create_tool_btn(self.toolbar, "", command=self.delete_block, image=icons.delete)
+        self.create_tool_btn(self.toolbar, "", command=lambda: self.move_block(-1), image=icons.up)
+        self.create_tool_btn(self.toolbar, "", command=lambda: self.move_block(1), image=icons.down)
 
         self.canvas = tk.Canvas(self.left_frame, bg="#282828", highlightthickness=0)
         self.scrollbar = ctk.CTkScrollbar(self.left_frame, orientation="vertical", command=self.canvas.yview)
@@ -1845,11 +1875,12 @@ class ScriptEditor(ctk.CTkToplevel):
         btn_frame = ctk.CTkFrame(self.right_frame, fg_color="transparent")
         btn_frame.pack(fill="x", pady=5)
         
-        ctk.CTkButton(btn_frame, text="Lưu", command=self.save_all, fg_color=ACCENT_COLOR, hover_color=HOVER_COLOR, text_color="black", font=(MAIN_FONT, 12)).pack(side="right", padx=5)
+        ctk.CTkButton(btn_frame, text="Lưu", image=icons.save, compound="left", command=self.save_all, fg_color=ACCENT_COLOR, hover_color=HOVER_COLOR, text_color="black", font=(MAIN_FONT, 12)).pack(side="right", padx=5)
         ctk.CTkButton(btn_frame, text="Hủy", command=self.destroy, fg_color="#333", hover_color="#444", font=(MAIN_FONT, 12)).pack(side="right", padx=5)
 
-    def create_tool_btn(self, parent, text, command):
-        ctk.CTkButton(parent, text=text, command=command, fg_color="#3c3c3c", width=30, height=25, font=(MAIN_FONT, 10)).pack(side="left", padx=1)
+    def create_tool_btn(self, parent, text, command, image=None):
+        btn = ctk.CTkButton(parent, text=text, command=command, image=image, fg_color="#3c3c3c", hover_color="#555",  width=30, height=30, font=(MAIN_FONT, 10))
+        btn.pack(side="left", padx=1)
 
     def refresh_blocks(self):
         for w in self.block_container.winfo_children(): w.destroy()
@@ -1868,10 +1899,10 @@ class ScriptEditor(ctk.CTkToplevel):
                 entry.insert(0, step['name'])
                 entry.focus_set()
                 
-                ctk.CTkButton(f, text="✓", command=lambda idx=i, ent=entry: self.save_block_name(idx, ent.get()),
+                ctk.CTkButton(f, text="", image=icons.check, compound="left", command=lambda idx=i, ent=entry: self.save_block_name(idx, ent.get()),
                           fg_color="#6a9955", width=30, height=25, font=(MAIN_FONT, 10)).pack(side="right", padx=1)
                 
-                ctk.CTkButton(f, text="✘", command=self.cancel_block_rename,
+                ctk.CTkButton(f, text="", image=icons.x, compound="left", command=self.cancel_block_rename,
                           fg_color="#cc3333", width=30, height=25, font=(MAIN_FONT, 10)).pack(side="right", padx=1)
 
                 entry.bind("<Return>", lambda e, idx=i, ent=entry: self.save_block_name(idx, ent.get()))
