@@ -9,7 +9,7 @@ import configparser
 import pyautogui
 import time
 import pandas as pd
-from PIL import Image, ImageTk 
+from PIL import Image, ImageTk, ImageDraw
 import keyboard
 import colorsys
 import json
@@ -20,9 +20,10 @@ ctk.set_appearance_mode("Dark")
 ctk.set_default_color_theme("dark-blue")
 
 APP_NAME = "ACS Auto"
-VERSION = "2.2.0"
+VERSION = "2.2.1"
 ACCENT_COLOR = "#c48b9a"
 HOVER_COLOR = "#4a4a4a"
+HOVER_2_COLOR = "#db9aaa"
 DARK_BG = "#1e1e1e"
 FRAME_BG = "#2b2b2b"
 BUTTON_BG = "#3a3a3a"
@@ -581,7 +582,7 @@ class AutoACSTool(ctk.CTk):
         self.create_custom_title_bar()
         self.configure(fg_color=DARK_BG)
 
-        self.tabview = ctk.CTkTabview(self, width=480, height=580, fg_color=FRAME_BG, segmented_button_selected_color=ACCENT_COLOR, segmented_button_selected_hover_color=HOVER_COLOR) 
+        self.tabview = ctk.CTkTabview(self, width=480, height=580, fg_color=FRAME_BG, segmented_button_selected_color=ACCENT_COLOR, segmented_button_selected_hover_color=HOVER_2_COLOR) 
         self.tabview.pack(fill="both", expand=True, padx=5, pady=5)
         
         self.tabview._segmented_button.configure(font=(MAIN_FONT, 12, "bold"))
@@ -1137,29 +1138,44 @@ class AutoACSTool(ctk.CTk):
         content_frame.pack(fill="both", expand=True)
         
         ctk.CTkLabel(content_frame, text=APP_NAME, font=(MAIN_FONT, 24, "bold")).pack(pady=(40, 10))
-        ctk.CTkLabel(content_frame, text="Tự động Ghi UID, địa chỉ và test", font=(MAIN_FONT, 12)).pack(pady=5)
-        ctk.CTkLabel(content_frame, text=f"Version: {VERSION}", font=(MAIN_FONT, 12)).pack(pady=5)
+        ctk.CTkLabel(content_frame, text="Tự động Ghi UID, địa chỉ và test", font=(MAIN_FONT, 12, "bold")).pack(pady=5)
+        ctk.CTkLabel(content_frame, text=f"Version: {VERSION}", font=(MAIN_FONT, 12, "bold")).pack(pady=5)
         
         author_frame = ctk.CTkFrame(content_frame, fg_color="transparent")
         author_frame.pack(pady=5)
-        ctk.CTkLabel(author_frame, text="Author: ", font=(MAIN_FONT, 12)).pack(side="left")
-        author_link = ctk.CTkLabel(author_frame, text="Suki", text_color="#db9aaa", cursor="hand2", font=(MAIN_FONT, 12, "bold"))
+        ctk.CTkLabel(author_frame, text="Author: ", font=(MAIN_FONT, 12, "bold")).pack(side="left")
+        author_link = ctk.CTkLabel(author_frame, text="Suki", text_color=ACCENT_COLOR, cursor="hand2", font=(MAIN_FONT, 12, "bold"))
         author_link.pack(side="left")
         author_link.bind("<Button-1>", lambda e: webbrowser.open("https://github.com/Suki8898"))
         
         try:
             image_path = os.path.join(os.path.dirname(__file__), config_manager.get('GENERAL', 'image_folder'), 'Suki.png')
             pil_image = Image.open(image_path)
+            
             max_width, max_height = 250, 250
             original_width, original_height = pil_image.size
+            new_width, new_height = original_width, original_height
+            
             if original_width > max_width or original_height > max_height:
                 ratio = min(max_width / original_width, max_height / original_height)
                 new_width, new_height = int(original_width * ratio), int(original_height * ratio)
                 pil_image = pil_image.resize((new_width, new_height), Image.Resampling.LANCZOS)
             
+            radius = 30
+            sampling_factor = 4
+            mask_w = new_width * sampling_factor
+            mask_h = new_height * sampling_factor
+            mask = Image.new("L", (mask_w, mask_h), 0)
+            draw = ImageDraw.Draw(mask)   
+            draw.rounded_rectangle((0, 0, mask_w, mask_h), radius=radius * sampling_factor, fill=255)
+            mask = mask.resize((new_width, new_height), Image.Resampling.LANCZOS)
+            pil_image = pil_image.convert("RGBA")
+            pil_image.putalpha(mask)
+
             self.suki_image_ref = ctk.CTkImage(light_image=pil_image, dark_image=pil_image, size=(new_width, new_height))
             ctk.CTkLabel(content_frame, image=self.suki_image_ref, text="").pack(pady=(20, 10))
-        except:
+        except Exception as e:
+            logger.error(f"Lỗi xử lý ảnh Suki: {e}")
             pass
 
     def stop_all_automation(self):
@@ -1521,10 +1537,10 @@ class ScriptSelector(ctk.CTkToplevel):
         btn_frame = ctk.CTkFrame(self.content_frame, fg_color="transparent")
         btn_frame.pack(fill="x", pady=10, padx=10)
         
-        btn_new = ctk.CTkButton(btn_frame, text="Tạo kịch bản mới", command=self.create_new, fg_color=ACCENT_COLOR, hover_color=HOVER_COLOR, text_color="black", font=(MAIN_FONT, 12))
+        btn_new = ctk.CTkButton(btn_frame, text="Tạo kịch bản mới", image=icons.add, compound="left", command=self.create_new, fg_color=BUTTON_BG, hover_color=HOVER_COLOR, font=(MAIN_FONT, 12, "bold"))
         btn_new.pack(side="left")
 
-        btn_close = ctk.CTkButton(btn_frame, text="Đóng", command=self.destroy, fg_color="#cc3333", hover_color="#aa2222", font=(MAIN_FONT, 12))
+        btn_close = ctk.CTkButton(btn_frame, text="Đóng", command=self.destroy, fg_color="#cc3333", hover_color="#aa2222", font=(MAIN_FONT, 12, "bold"))
         btn_close.pack(side="right")
 
         self.refresh_list()
@@ -1536,9 +1552,9 @@ class ScriptSelector(ctk.CTkToplevel):
         
         header = ctk.CTkFrame(self.list_frame, fg_color="#333333")
         header.pack(fill="x", pady=0)
-        ctk.CTkLabel(header, text="Active", width=50, font=(MAIN_FONT, 9, "bold")).pack(side="left")
-        ctk.CTkLabel(header, text="Tên Kịch Bản", font=(MAIN_FONT, 9, "bold")).pack(side="left", padx=5, fill="x", expand=True)
-        ctk.CTkLabel(header, text="Thao tác", width=100, font=(MAIN_FONT, 9, "bold")).pack(side="right", padx=5)
+        ctk.CTkLabel(header, text="Active", width=50, font=(MAIN_FONT, 12, "bold")).pack(side="left")
+        ctk.CTkLabel(header, text="Tên Kịch Bản", font=(MAIN_FONT, 12, "bold")).pack(side="left", padx=5, fill="x", expand=True)
+        ctk.CTkLabel(header, text="Thao tác", width=100, font=(MAIN_FONT, 12, "bold")).pack(side="right", padx=5)
 
         if not self.scripts_list:
             ctk.CTkLabel(self.list_frame, text="(Chưa có kịch bản nào)", text_color="#888", font=(MAIN_FONT, 12)).pack(pady=20)
@@ -1569,7 +1585,7 @@ class ScriptSelector(ctk.CTkToplevel):
             else:
                 fg_color = ACCENT_COLOR if is_active else "white"
                 name_lbl = ctk.CTkLabel(name_container, text=script['name'], text_color=fg_color, 
-                                    font=(MAIN_FONT, 10, 'bold' if is_active else 'normal'), anchor="w")
+                                    font=(MAIN_FONT, 12, 'bold' if is_active else 'normal'), anchor="w")
                 name_lbl.pack(fill="x", expand=True)
                 name_lbl.bind("<Double-Button-1>", lambda e, idx=i: self.start_rename(idx))
 
@@ -1577,19 +1593,19 @@ class ScriptSelector(ctk.CTkToplevel):
             btn_box.pack(side="right", padx=5)
 
             if i == self.editing_index:
-                ctk.CTkButton(btn_box, text="", image=icons.check, compound="left", font=(MAIN_FONT, 9, 'bold'), fg_color="#6a9955", width=30, height=25,
+                ctk.CTkButton(btn_box, text="", image=icons.check, compound="left", fg_color="#6a9955", hover_color="#88c46d", width=30, height=25,
                           command=lambda idx=i, ent=entry_name: self.save_name(idx, ent.get())).pack(side="left", padx=1)
-                ctk.CTkButton(btn_box, text="", image=icons.x, compound="left", font=(MAIN_FONT, 9, 'bold'), fg_color="#cc3333", width=30, height=25,
+                ctk.CTkButton(btn_box, text="", image=icons.x, compound="left", fg_color="#cc3333", hover_color="#e66666", width=30, height=25,
                           command=self.cancel_rename).pack(side="left", padx=1)
             else:
-                ctk.CTkButton(btn_box, text="", image=icons.edit, compound="left", font=(MAIN_FONT, 9), fg_color="#4a4a4a", width=30, height=25,
+                ctk.CTkButton(btn_box, text="", image=icons.edit, compound="left", fg_color=BUTTON_BG, hover_color=HOVER_COLOR, width=30, height=25,
                           command=lambda idx=i: self.start_rename(idx)).pack(side="left", padx=1)
 
-                ctk.CTkButton(btn_box, text="", image=icons.code, compound="left", font=(MAIN_FONT, 9), fg_color=ACCENT_COLOR, text_color="black", width=40, height=25,
+                ctk.CTkButton(btn_box, text="", image=icons.code, compound="left", fg_color=BUTTON_BG, hover_color=HOVER_COLOR, width=30, height=25,
                           command=lambda idx=i: self.edit_content(idx)).pack(side="left", padx=1)
                 
                 if len(self.scripts_list) > 1:
-                    ctk.CTkButton(btn_box, text="", image=icons.delete, compound="left", font=(MAIN_FONT, 9), fg_color="#cc3333", width=30, height=25,
+                    ctk.CTkButton(btn_box, text="", image=icons.delete, compound="left", fg_color="#cc3333", hover_color="#e66666", width=30, height=25,
                               command=lambda idx=i: self.delete_script(idx)).pack(side="left", padx=1)
 
     def create_new(self):
@@ -1875,8 +1891,8 @@ class ScriptEditor(ctk.CTkToplevel):
         btn_frame = ctk.CTkFrame(self.right_frame, fg_color="transparent")
         btn_frame.pack(fill="x", pady=5)
         
-        ctk.CTkButton(btn_frame, text="Lưu", image=icons.save, compound="left", command=self.save_all, fg_color=ACCENT_COLOR, hover_color=HOVER_COLOR, text_color="black", font=(MAIN_FONT, 12)).pack(side="right", padx=5)
-        ctk.CTkButton(btn_frame, text="Hủy", command=self.destroy, fg_color="#333", hover_color="#444", font=(MAIN_FONT, 12)).pack(side="right", padx=5)
+        ctk.CTkButton(btn_frame, text="Lưu", image=icons.save, compound="left", command=self.save_all, fg_color="#6a9955", hover_color="#88c46d", font=(MAIN_FONT, 12, "bold")).pack(side="right", padx=5)
+        ctk.CTkButton(btn_frame, text="Hủy", command=self.destroy, fg_color="#333", hover_color="#444", font=(MAIN_FONT, 12, "bold")).pack(side="right", padx=5)
 
     def create_tool_btn(self, parent, text, command, image=None):
         btn = ctk.CTkButton(parent, text=text, command=command, image=image, fg_color="#3c3c3c", hover_color="#555",  width=30, height=30, font=(MAIN_FONT, 10))
@@ -1909,7 +1925,7 @@ class ScriptEditor(ctk.CTkToplevel):
                 entry.bind("<Escape>", lambda e: self.cancel_block_rename())
             else:
                 fg_color = "black" if i == self.current_step_index else "white"
-                font_style = (MAIN_FONT, 10, "bold") if i == self.current_step_index else (MAIN_FONT, 10)
+                font_style = (MAIN_FONT, 10, "bold") if i == self.current_step_index else (MAIN_FONT, 10, "bold")
                 
                 lbl = ctk.CTkLabel(f, text=f"{i+1}. {step['name']}", text_color=fg_color, font=font_style, anchor="w")
                 lbl.pack(fill="both", expand=True, padx=10, pady=5)
