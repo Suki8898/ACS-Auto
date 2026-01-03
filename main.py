@@ -15,12 +15,13 @@ import colorsys
 import json
 import copy
 import cv2
+import random
 
 ctk.set_appearance_mode("Dark")
 ctk.set_default_color_theme("dark-blue")
 
 APP_NAME = "ACS Auto"
-VERSION = "2.2.1"
+VERSION = "2.3.0"
 ACCENT_COLOR = "#c48b9a"
 HOVER_COLOR = "#4a4a4a"
 HOVER_2_COLOR = "#db9aaa"
@@ -671,8 +672,8 @@ class AutoACSTool(ctk.CTk):
         logger.info(f"🚀 Đang chạy kịch bản: {script_name}")
         self.set_buttons_state("disabled")
 
-        self.player_manager.start()
-        self.player_config.start()    
+        suki_path = os.path.join(acs_auto.image_folder, "Working.mp4")
+        self.player_manager.start_active(suki_path) 
 
         self.automation_thread = threading.Thread(
             target=self._run_dynamic_script, 
@@ -722,8 +723,8 @@ class AutoACSTool(ctk.CTk):
         except Exception as e:
             logger.error(f"Lỗi hệ thống script: {e}", exc_info=True)
         finally:
-            self.after(0, self.player_manager.stop)
-            self.after(0, self.player_config.stop)
+            self.after(0, self.player_manager.start_idle)
+            self.after(0, self.player_config.start_idle)
             self.after(0, lambda: self.set_buttons_state("normal"))
             self.after(0, self.update_excel_status)
             self.after(0, lambda: self.update_entry_fields(acs_auto.current_excel_row_index))
@@ -800,8 +801,9 @@ class AutoACSTool(ctk.CTk):
         self.update_device_power_options_col(1)
         self.update_device_power_options_col(2)
         
-        video_path = os.path.join(acs_auto.image_folder, "Suki.mp4")
-        self.player_manager = VideoPlayer(tab, video_path)
+        video_path = os.path.join(acs_auto.image_folder, "Working.mp4")
+        self.player_manager = VideoPlayer(tab, acs_auto.image_folder)
+        self.player_manager.start_idle()
 
     def update_device_power_options_col(self, col):
         if col == 1:
@@ -888,8 +890,9 @@ class AutoACSTool(ctk.CTk):
         chk_auto_inc.pack(pady=(10, 10), anchor="w", padx=20)
         
         acs_auto.enable_auto_increment = True
-        video_path = os.path.join(acs_auto.image_folder, "Suki.mp4")
-        self.player_config = VideoPlayer(tab, video_path)
+        video_path = os.path.join(acs_auto.image_folder, "Working.mp4")
+        self.player_config = VideoPlayer(tab, acs_auto.image_folder)
+        self.player_config.start_idle()
 
     def create_settings_tab(self):
         tab = self.tabview.tab("Cài đặt")
@@ -2139,47 +2142,105 @@ class ScriptEditor(ctk.CTkToplevel):
         if self.on_save_callback: self.on_save_callback()
 
 class VideoPlayer:
-    def __init__(self, parent, video_path, width=199, height=150):
+    def __init__(self, parent, image_folder, width=199, height=150):
         self.parent = parent
-        self.video_path = video_path
+        self.image_folder = image_folder
         self.width = width
         self.height = height
         self.cap = None
         self.is_playing = False
+        
+        self.idle_files = ["Idle_1.mp4", "Idle_2.mp4", "Idle_3.mp4", "Idle_4.mp4"]
+        self.idle_weights = [0.55, 0.15, 0.15, 0.15] 
+        
+        self.current_mode = "idle" 
+        
         self.label = ctk.CTkLabel(parent, text="")
-        self.label.pack_forget() 
+        self.label.pack_forget()
 
-    def start(self):
-        if not os.path.exists(self.video_path):
-            logger.warning(f"Không tìm thấy video animation: {self.video_path}")
+    def start_active(self, video_path):
+        self.current_mode = "active"
+        self._load_video(video_path)
+
+    def start_idle(self):
+        self.current_mode = "idle"
+        self._play_random_idle()
+
+    def _play_random_idle(self):
+        try:
+            chosen_file = random.choices(self.idle_files, weights=self.idle_weights, k=1)[0]
+            video_path = os.path.join(self.image_folder, chosen_file)
+            
+            if not os.path.exists(video_path):
+                for f in self.idle_files:
+                    p = os.path.join(self.image_folder, f)
+                    if os.path.exists(p):
+                        video_path = p
+                        break
+            
+            self._load_video(video_path)
+        except Exception as e:
+            logger.error(f"Lỗi chọn video idle: {e}")
+
+    def _load_video(self, path):
+        if self.cap:
+            self.cap.release()
+        
+        if not os.path.exists(path):
             return
-        self.cap = cv2.VideoCapture(self.video_path)
+
+        self.cap = cv2.VideoCapture(path)
         self.is_playing = True
-        self.label.pack(pady=10, side="bottom") 
-        self.update_frame()
+        self.label.pack(pady=10, side="bottom")
+        
+        if not hasattr(self, 'update_job') or self.update_job is None:
+            self.update_frame()
 
     def stop(self):
         self.is_playing = False
         if self.cap:
             self.cap.release()
+            self.cap = None
         self.label.pack_forget()
         self.label.configure(image=None)
+        self.update_job = None
 
     def update_frame(self):
         if not self.is_playing or not self.cap:
+            self.update_job = None
             return
+
+        if not self.label.winfo_viewable():
+            self.update_job = self.label.after(500, self.update_frame)
+            return
+
         ret, frame = self.cap.read()
-        if not ret:
-            self.cap.set(cv2.CAP_PROP_POS_FRAMES, 0)
-            ret, frame = self.cap.read()
         
+        if not ret:
+            if self.current_mode == "active":
+                self.cap.set(cv2.CAP_PROP_POS_FRAMES, 0)
+                ret, frame = self.cap.read()
+            else:
+                self._play_random_idle()
+                if self.cap:
+                    ret, frame = self.cap.read()
+
         if ret:
-            frame = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
-            img = Image.fromarray(frame)
-            ctk_img = ctk.CTkImage(light_image=img, dark_image=img, size=(self.width, self.height))
-            self.label.configure(image=ctk_img)
-            self.label.image = ctk_img
-            self.label.after(33, self.update_frame)
+            try:
+                frame = cv2.resize(frame, (self.width, self.height), interpolation=cv2.INTER_LINEAR)
+                
+                frame = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
+                img = Image.fromarray(frame)
+                ctk_img = ctk.CTkImage(light_image=img, dark_image=img, size=(self.width, self.height))
+                
+                self.label.configure(image=ctk_img)
+                self.label.image = ctk_img
+            except Exception:
+                pass
+
+            self.update_job = self.label.after(25, self.update_frame)
+        else:
+            self.update_job = self.label.after(100, self.update_frame)
 
 if __name__ == "__main__":
     app = AutoACSTool()
