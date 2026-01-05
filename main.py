@@ -21,7 +21,7 @@ ctk.set_appearance_mode("Dark")
 ctk.set_default_color_theme("dark-blue")
 
 APP_NAME = "ACS Auto"
-VERSION = "2.3.0"
+VERSION = "2.3.1"
 ACCENT_COLOR = "#c48b9a"
 HOVER_COLOR = "#4a4a4a"
 HOVER_2_COLOR = "#db9aaa"
@@ -673,7 +673,8 @@ class AutoACSTool(ctk.CTk):
         self.set_buttons_state("disabled")
 
         suki_path = os.path.join(acs_auto.image_folder, "Working.mp4")
-        self.player_manager.start_active(suki_path) 
+        self.player_manager.start_active(suki_path)
+        self.player_config.start_active(suki_path)
 
         self.automation_thread = threading.Thread(
             target=self._run_dynamic_script, 
