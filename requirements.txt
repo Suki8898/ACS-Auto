@@ -4,4 +4,6 @@ Pillow
 keyboard
 opencv-python
 openpyxl
+pygetwindow
+customtkinter
 
