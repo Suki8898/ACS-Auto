@@ -21,7 +21,7 @@ ctk.set_appearance_mode("Dark")
 ctk.set_default_color_theme("dark-blue")
 
 APP_NAME = "ACS Auto"
-VERSION = "2.3.1"
+VERSION = "2.3.2"
 ACCENT_COLOR = "#c48b9a"
 HOVER_COLOR = "#4a4a4a"
 HOVER_2_COLOR = "#db9aaa"
@@ -84,6 +84,7 @@ class ConfigManager:
             'tricolor_led_item': 'tricolor_led_item.png',
             'afvarionaut_pump_item': 'afvarionaut_pump_item.png',
             'dmx_slave_address_field': 'dmx_slave_address_field.png',
+            'dmx_address_updated': 'dmx_address_updated.png',
             'set_dmx_slave_address_btn': 'set_dmx_slave_address_btn.png',
             'run_dmx_test_btn': 'run_dmx_test_btn.png',
             'stop_dmx_test_btn': 'stop_dmx_test_btn.png',
@@ -446,10 +447,13 @@ class ACSAutomation:
         time.sleep(self.action_delay)
         time.sleep(1) 
         if not self.type_text(address, image_name_key='dmx_slave_address_field', select_all_first=True, timeout=10):
-            return f"Thất bại: Không thể gõ Địa chỉ DMX Slave cho {device_type_name}."
-        if not self.find_and_click('set_dmx_slave_address_btn', timeout=10):
-            return f"Thất bại: Không thể tìm thấy nút 'Ghi địa chỉ DMX slave' cho {device_type_name}."
-        logger.info(f"Ghi địa chỉ {device_type_name} thành công.")
+            return f"Thất bại: Không thể gõ Địa chỉ cho {device_type_name}."
+        if self.find_and_click('set_dmx_slave_address_btn', timeout=3):
+            if not self.find('dmx_address_updated', timeout=5):
+                #if self. find('slave_device_not_found', timeout=5):
+                return f"Thất bại: Không thể tìm thấy nút 'Ghi địa chỉ' cho {device_type_name}."
+        else:
+            return f"Thất bại: Không thể ghi Địa chỉ cho {device_type_name}."
         return f"Ghi địa chỉ {device_type_name} thành công."
 
     def find(self, image_name_key, timeout=30, confidence_override=None):
@@ -1241,7 +1245,7 @@ class AutoACSTool(ctk.CTk):
         if acs_auto.excel_data:
             total_rows = len(acs_auto.excel_data)
             current_row = acs_auto.current_excel_row_index
-            self.excel_status_var.set(f"Đang ghi hàng: {current_row}/{total_rows}")
+            self.excel_status_var.set(f"Đang ghi hàng: {current_row + 1}/{total_rows}")
         else:
             self.excel_status_var.set("Chưa có file Excel được nhập.")
 
@@ -2152,7 +2156,7 @@ class VideoPlayer:
         self.is_playing = False
         
         self.idle_files = ["Idle_1.mp4", "Idle_2.mp4", "Idle_3.mp4", "Idle_4.mp4"]
-        self.idle_weights = [0.55, 0.15, 0.15, 0.15] 
+        self.idle_weights = [0.4, 0.2, 0.2, 0.2] 
         
         self.current_mode = "idle" 
         
