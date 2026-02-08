@@ -21,7 +21,7 @@ ctk.set_appearance_mode("Dark")
 ctk.set_default_color_theme("dark-blue")
 
 APP_NAME = "ACS Auto"
-VERSION = "2.3.2"
+VERSION = "2.4.0"
 ACCENT_COLOR = "#c48b9a"
 HOVER_COLOR = "#4a4a4a"
 HOVER_2_COLOR = "#db9aaa"
@@ -76,53 +76,7 @@ class ConfigManager:
         }
         self.config['IMAGE_PATHS'] = {
             'connected': 'connected.png',
-            'on_off_btn': 'on_off_btn.png',
-            'discover_btn': 'discover_blue.png,discover_white.png',
-            'device_discovery_title_1': 'device_discovery_title_1.png',
-            'scan_btn': 'scan_btn.png',
-            'discovery_completed_text': 'discovery_completed_text.png',
-            'tricolor_led_item': 'tricolor_led_item.png',
-            'afvarionaut_pump_item': 'afvarionaut_pump_item.png',
-            'dmx_slave_address_field': 'dmx_slave_address_field.png',
-            'dmx_address_updated': 'dmx_address_updated.png',
-            'set_dmx_slave_address_btn': 'set_dmx_slave_address_btn.png',
-            'run_dmx_test_btn': 'run_dmx_test_btn.png',
-            'stop_dmx_test_btn': 'stop_dmx_test_btn.png',
-            'dmx_slider_0': 'dmx_slider_0.png',
-            'dmx_slider_0_2': 'dmx_slider_0_2.png',
-            'dmx_slider_1': 'dmx_slider_1.png',
-            'dmx_slider_2': 'dmx_slider_2.png',
-            'dmx_slider_3': 'dmx_slider_3.png',
-            'selec_all_1': 'selec_all_1.png',
-            'selec_all_2': 'selec_all_2.png',
-            'acs_device_manager_title': 'acs_device_manager_title.png',
-            'acs_device_configuration_title': 'acs_device_configuration_title.png',
-            'acs_device_configuration': 'acs_device_configuration.png',
-            'acs_device_manager_1': 'acs_device_manager_1.png',
-            'acs_device_manager_2': 'acs_device_manager_2.png',
-            'close_window_btn': 'close_window_btn.png',
-            'load_btn': 'Load.png',
-            'list': 'List.png',
-            'add_btn': 'Add.png',
-            'adl_file': 'Adl.png',
-            'open_adl_btn': 'Open.png',
-            'generate_btn': 'Generate.png',
-            'device_type_field': 'Device type.png',
-            'submersible_pump_type_btn': 'Submersible Pump.png',
-            'tricolor_led_type_btn': 'Tricolor Led.png',
-            'singlecolor_led_type_btn': 'SingleColor Led.png',
-            'dmx2vfd_converter_type_btn': 'Dmx2Vfd Converter.png',
-            'device_power_field': 'Device power.png',
-            '12w_power_btn': '12W.png',
-            '36w_power_btn': '36W.png',
-            '100w_power_btn': '100W.png',
-            '140w_power_btn': '140W.png',
-            '160w_power_btn': '160W.png',
-            '150w_power_btn': '150W.png',
-            '200w_power_btn': '200W.png',
-            'write_btn': 'Write.png',
-            'save_btn': 'Save.png',
-            'successfully_text': 'Successfully text.png',
+
         }
         self.save_config()
 
@@ -337,26 +291,7 @@ class ACSAutomation:
         return False
 
     def xac_dinh_vi_tri_thiet_bi(self, timeout=10):
-        try:
-            discovery_window_location = pyautogui.locateOnScreen(
-                self._get_image_paths_list('device_discovery_title')[0],
-                confidence=0.8
-            )
-
-            if not discovery_window_location:
-                logger.warning("Không thể xác định vị trí tiêu đề cửa sổ Device Discovery. Đang tìm kiếm trên toàn màn hình.")
-                search_region = None
-            else:
-                search_region = (
-                    discovery_window_location.left,
-                    discovery_window_location.top,
-                    discovery_window_location.width,
-                    discovery_window_location.height
-                )
-                logger.info(f"Đang tìm kiếm thiết bị chỉ trong cửa sổ Device Discovery tại {search_region}")
-        except Exception as e:
-            logger.error(f"Lỗi khi xác định vị trí cửa sổ Device Discovery, đang tìm kiếm trên toàn màn hình: {e}", exc_info=True)
-            search_region = None
+        search_region = None
 
         led_locations = []
         pump_locations = []
@@ -371,7 +306,23 @@ class ACSAutomation:
             locate_confidence = 0.6
 
         logger.info(f"Vị trí thiết bị bắt đầu trong cửa sổ Discover (thời gian chờ = {timeout} s, độ tin cậy = {locate_confidence})")
-            
+
+        def dedupe_and_sort(locs, min_distance=8):
+            unique = []
+            centers = []
+            for loc in locs:
+                center = pyautogui.center(loc)
+                is_new = True
+                for c in centers:
+                    if abs(center.x - c.x) <= min_distance and abs(center.y - c.y) <= min_distance:
+                        is_new = False
+                        break
+                if is_new:
+                    unique.append(loc)
+                    centers.append(center)
+            unique.sort(key=lambda r: (r.top, r.left))
+            return unique
+
         start_time = time.time()
         while time.time() - start_time < timeout:
         
@@ -426,8 +377,11 @@ class ACSAutomation:
                     pass
 
             if current_iteration_led_locs or current_iteration_pump_locs or current_iteration_dmx2vfd_locs:
-                logger.info(f"Tìm thấy {len(current_iteration_led_locs)} LED(s) , {len(current_iteration_pump_locs)} PUMP(s) và {len(current_iteration_dmx2vfd_locs)} DMX2VFD(s) trong Device Discovery.")
-                return current_iteration_led_locs, current_iteration_pump_locs, current_iteration_dmx2vfd_locs
+                led_locs = dedupe_and_sort(current_iteration_led_locs)
+                pump_locs = dedupe_and_sort(current_iteration_pump_locs)
+                dmx2vfd_locs = dedupe_and_sort(current_iteration_dmx2vfd_locs)
+                logger.info(f"Tìm thấy {len(led_locs)} LED(s) , {len(pump_locs)} PUMP(s) và {len(dmx2vfd_locs)} DMX2VFD(s) trong Device Discovery.")
+                return led_locs, pump_locs, dmx2vfd_locs
 
             time.sleep(0.5)
                 
@@ -450,8 +404,11 @@ class ACSAutomation:
             return f"Thất bại: Không thể gõ Địa chỉ cho {device_type_name}."
         if self.find_and_click('set_dmx_slave_address_btn', timeout=3):
             if not self.find('dmx_address_updated', timeout=5):
-                #if self. find('slave_device_not_found', timeout=5):
-                return f"Thất bại: Không thể tìm thấy nút 'Ghi địa chỉ' cho {device_type_name}."
+                if self.find_and_click('set_dmx_slave_address_btn', timeout=3):
+                    if not self.find('dmx_address_updated', timeout=5):
+                        return f"Thất bại: Không thể xác nhận đã ghi địa chỉ cho {device_type_name}."
+                else:
+                    return f"Thất bại: Không thể nhấn lại nút 'Ghi địa chỉ' cho {device_type_name}."
         else:
             return f"Thất bại: Không thể ghi Địa chỉ cho {device_type_name}."
         return f"Ghi địa chỉ {device_type_name} thành công."
@@ -511,6 +468,7 @@ class ACSAutomation:
             "Tricolor Led": "tricolor_led_type_btn",
             "SingleColor Led": "singlecolor_led_type_btn",
             "Dmx2Vfd Converter": "dmx2vfd_converter_type_btn",
+            "Solenoid Valves": "solenoid_valves_type_btn",
         }
         if device_type in device_type_map:
             image_key = device_type_map[device_type]
@@ -537,28 +495,6 @@ class ACSAutomation:
         else:
             return f"Thất bại: Invalid device power: {device_power}"
         return f"Device power selected: {device_power}"
-
-    def click_acs_device_configuration(self, x, y):
-        target_title = "ACS Device Configuration - Version 1.5.0"
-        try:
-            windows = pyautogui.getWindowsWithTitle(target_title)
-            if not windows:
-                logger.warning(f"Không tìm thấy cửa sổ: '{target_title}'")
-                return
-            window = windows[0]
-            if window.isMinimized:
-                window.restore()
-            abs_x = window.left + x
-            abs_y = window.top + y
-            try:
-                window.activate()
-            except Exception:
-                pass
-            logger.info(f"Đang click tại ({x}, {y}) trên cửa sổ ACS...")
-            pyautogui.click(abs_x, abs_y)
-        except Exception as e:
-            logger.error(f"Lỗi khi click tọa độ: {e}")
-    
 
 acs_auto = ACSAutomation()
 
@@ -654,6 +590,20 @@ class AutoACSTool(ctk.CTk):
             'selected_device_power': self.device_power_var_col2.get()
         }
 
+    def get_followup_category(self):
+        if self.continue_address_var.get():
+            return "address"
+        if self.continue_address_test_var.get():
+            return "address_test"
+        return None
+
+    def _start_followup_if_idle(self, category, retry_count=0):
+        if hasattr(self, 'automation_thread') and self.automation_thread.is_alive():
+            if retry_count < 20:
+                self.after(200, lambda: self._start_followup_if_idle(category, retry_count + 1))
+            return
+        self.execute_category_script(category, self.get_excel_context)
+
     def execute_category_script(self, category, context_func=None):
         if hasattr(self, 'automation_thread') and self.automation_thread.is_alive():
             logger.warning("Một tác vụ đang chạy. Vui lòng đợi.")
@@ -675,6 +625,7 @@ class AutoACSTool(ctk.CTk):
 
         logger.info(f"🚀 Đang chạy kịch bản: {script_name}")
         self.set_buttons_state("disabled")
+        self._current_running_category = category
 
         suki_path = os.path.join(acs_auto.image_folder, "Working.mp4")
         self.player_manager.start_active(suki_path)
@@ -734,6 +685,10 @@ class AutoACSTool(ctk.CTk):
             self.after(0, self.update_excel_status)
             self.after(0, lambda: self.update_entry_fields(acs_auto.current_excel_row_index))
 
+            followup = self.get_followup_category()
+            if followup and self._current_running_category in ("uid_col1", "uid_col2"):
+                self.after(200, lambda cat=followup: self._start_followup_if_idle(cat))
+
     def create_acs_device_manager_tab(self):
         tab = self.tabview.tab("ACS Device Manager")
 
@@ -759,7 +714,7 @@ class AutoACSTool(ctk.CTk):
         ctk.CTkLabel(device_type_frame_1, text="Device Type", font=(MAIN_FONT, 12, "bold")).pack(anchor="w", padx=10, pady=(5,0))
 
         self.device_type_var_col1 = ctk.StringVar(value="AFVarionaut Pump")
-        device_type_options = ["AFVarionaut Pump", "Submersible Pump", "Tricolor Led", "SingleColor Led", "Dmx2Vfd Converter"]
+        device_type_options = ["AFVarionaut Pump", "Submersible Pump", "Tricolor Led", "SingleColor Led", "Dmx2Vfd Converter", "Solenoid Valves"]
         self.device_type_dropdown_col1 = ctk.CTkComboBox(device_type_frame_1, variable=self.device_type_var_col1, values=device_type_options, command=lambda e: self.update_device_power_options_col(1), font=(MAIN_FONT, 12), dropdown_font=(MAIN_FONT, 12))
         self.device_type_dropdown_col1.pack(pady=5, fill="x", padx=10)
 
@@ -803,6 +758,40 @@ class AutoACSTool(ctk.CTk):
         self.device_power_dropdown_col2 = ctk.CTkComboBox(device_power_frame_2, variable=self.device_power_var_col2, values=self.device_power_options_col2, font=(MAIN_FONT, 12), dropdown_font=(MAIN_FONT, 12))
         self.device_power_dropdown_col2.pack(pady=5, fill="x", padx=10)
 
+        followup_frame = ctk.CTkFrame(tab, fg_color="transparent")
+        followup_frame.pack(fill="both", padx=5, pady=5, expand=True)
+
+        self.continue_address_var = ctk.BooleanVar(value=False)
+        self.continue_address_test_var = ctk.BooleanVar(value=False)
+
+        def on_continue_address_toggle():
+            if self.continue_address_var.get():
+                self.continue_address_test_var.set(False)
+
+        def on_continue_address_test_toggle():
+            if self.continue_address_test_var.get():
+                self.continue_address_var.set(False)
+
+        ctk.CTkCheckBox(
+            followup_frame,
+            text="Tiếp tục ghi địa chỉ",
+            variable=self.continue_address_var,
+            command=on_continue_address_toggle,
+            fg_color=ACCENT_COLOR,
+            hover_color=HOVER_COLOR,
+            font=(MAIN_FONT, 12, "bold")
+        ).pack(anchor="w", padx=5, pady=(0, 2))
+
+        ctk.CTkCheckBox(
+            followup_frame,
+            text="Tiếp tục ghi địa chỉ & test",
+            variable=self.continue_address_test_var,
+            command=on_continue_address_test_toggle,
+            fg_color=ACCENT_COLOR,
+            hover_color=HOVER_COLOR,
+            font=(MAIN_FONT, 12, "bold")
+        ).pack(anchor="w", padx=5)
+
         self.update_device_power_options_col(1)
         self.update_device_power_options_col(2)
         
@@ -818,6 +807,7 @@ class AutoACSTool(ctk.CTk):
             elif selected == "Tricolor Led": options = ["18", "36"]
             elif selected == "SingleColor Led": options = ["6", "12"]
             elif selected == "Dmx2Vfd Converter": options = ["Unspecified"]
+            elif selected == "Solenoid Valves": options = ["200"]
             else: options = []
             self.device_power_options_col1 = options
             self.device_power_dropdown_col1.configure(values=options)
@@ -830,6 +820,7 @@ class AutoACSTool(ctk.CTk):
             elif selected == "Tricolor Led": options = ["18", "36"]
             elif selected == "SingleColor Led": options = ["6", "12"]
             elif selected == "Dmx2Vfd Converter": options = ["Unspecified"]
+            elif selected == "Solenoid Valves": options = ["200"]
             else: options = []
             self.device_power_options_col2 = options
             self.device_power_dropdown_col2.configure(values=options)
@@ -948,7 +939,7 @@ class AutoACSTool(ctk.CTk):
 
         add_gen_entry(gen_frame, "Delay chụp màn hình", "screenshot_delay_entry", config_manager.get('GENERAL', 'screenshot_delay_sec'))
         add_gen_entry(gen_frame, "Delay thao tác", "action_delay_entry", config_manager.get('GENERAL', 'action_delay_sec'))
-        add_gen_entry(gen_frame, "Độ tin cậy (0.0 - 1.0)", "confidence_entry", config_manager.get('GENERAL', 'find_image_confidence'))
+        add_gen_entry(gen_frame, "Độ chính xác (0.0 - 1.0)", "confidence_entry", config_manager.get('GENERAL', 'find_image_confidence'))
 
         ctk.CTkProgressBar(right_frame, height=2, progress_color=ACCENT_COLOR).pack(fill="x", pady=10, padx=10)
 
@@ -1185,6 +1176,8 @@ class AutoACSTool(ctk.CTk):
         except Exception as e:
             logger.error(f"Lỗi xử lý ảnh Suki: {e}")
             pass
+
+        ctk.CTkLabel(content_frame, text=f"Meow~", font=(MAIN_FONT, 12, "bold")).pack(pady=5)
 
     def stop_all_automation(self):
         if acs_auto.stop_requested == False:
@@ -1874,12 +1867,7 @@ class ScriptEditor(ctk.CTkToplevel):
                                     bd=0, font=(MAIN_FONT, 11), state="disabled", highlightthickness=0)
         self.line_numbers.pack(side="left", fill="y")
 
-        self.code_text = tk.Text(self.code_frame, bg="#1e1e1e", fg="#d4d4d4", insertbackground="white",
-                                 font=(MAIN_FONT, 11), undo=True, autoseparators=True, maxundo=-1,
-                                 yscrollcommand=self.sync_scroll_code, 
-                                 xscrollcommand=self.h_code_scroll.set, 
-                                 wrap="none", 
-                                 borderwidth=0)
+        self.code_text = tk.Text(self.code_frame, bg="#1e1e1e", fg="#d4d4d4", insertbackground="white", font=(MAIN_FONT, 11), undo=True, autoseparators=True, maxundo=-1, yscrollcommand=self.sync_scroll_code, xscrollcommand=self.h_code_scroll.set, wrap="none", borderwidth=0)
         self.code_text.pack(side="left", fill="both", expand=True)
 
         self.code_scroll.configure(command=self.sync_scroll_bar)

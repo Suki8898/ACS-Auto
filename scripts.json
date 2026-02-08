@@ -4,6 +4,14 @@
             "name": "Mặc định",
             "steps": [
                 {
+                    "name": "Đóng ACS Device Configuration nếu có",
+                    "code": "target_title = \"ACS Device Configuration - Version 1.6.0\"\ntry:\n    windows = pyautogui.getWindowsWithTitle(target_title)\n    if not windows:\n        logger.warning(f\"Không tìm thấy cửa sổ: '{target_title}'\")\n\n    window = windows[0]\n\n    if window.isMinimized:\n        window.restore()\n\n    window.activate()\n    window.close()\n\n    logger.info(\"Đã đóng cửa sổ ACS Device Manager\")\n\nexcept Exception as e:\n    logger.error(f\"Lỗi khi đóng cửa sổ: {e}\")"
+                },
+                {
+                    "name": "Chọn cửa sổ ACS Device Manager",
+                    "code": "target_title = \"ACS Device Manager - Version 1.5.0\"\nexe_path = r\"D:\\Program Files\\ACS\\ACS Device Manager_1.5.0\\Acs_Device_Manager_v1.5.0.exe\"\ntry:\n    windows = pyautogui.getWindowsWithTitle(target_title)\n    if not windows:\n        if not os.path.exists(exe_path):\n            logger.error(f\"Không tìm thấy file exe: {exe_path}\")\n\n        logger.info(\"Chưa mở ACS Device Manager. Đang chạy...\")\n        os.startfile(exe_path)\n\n        start_time = time.time()\n        while time.time() - start_time < timeout:\n            windows = pyautogui.getWindowsWithTitle(target_title)\n            if windows:\n                break\n            time.sleep(0.5)\n\n    if not windows:\n        logger.warning(f\"Không tìm thấy cửa sổ sau khi mở: '{target_title}'\")\n\n    window = windows[0]\n    if window.isMinimized:\n        window.restore()\n    try:\n        window.activate()\n    except Exception:\n        pass\n    logger.info(\"Đã activate ACS Device Manager\")\nexcept Exception as e:\n    logger.error(f\"Lỗi khi activate ACS Device Manager: {e}\")"
+                },
+                {
                     "name": "Kiểm tra danh sách",
                     "code": "if not acs_auto.find('list', timeout=0.2):\n    if not acs_auto.find_and_click('load_btn', timeout=1):\n        results.append('Thất bại: không tìm thấy nút load_btn')\n        script_stop = True\n    if not acs_auto.find_and_click('adl_file', timeout=2):\n        results.append('Thất bại: không tìm thấy file adl')\n        script_stop = True\n    if not acs_auto.find_and_click('open_adl_btn', timeout=1):\n        results.append('Thất bại: không tìm thấy nút Open')\n        script_stop = True"
                 },
@@ -21,15 +29,15 @@
                 },
                 {
                     "name": "Chọn Power",
-                    "code": "if selected_device_power not in ('6', '18', '60', '120', 'Unspecified'):\n    res = acs_auto._select_device_power(selected_device_power)\n    results.append(res)\nelse:\n    results.append(f'Bỏ qua công suất {selected_device_power}')"
+                    "code": "if selected_device_type == 'Solenoid Valves':\n    results.append(f'Bỏ qua công suất {selected_device_power}')\nelif selected_device_power not in ('6', '18', '60', '120', 'Unspecified'):\n    res = acs_auto._select_device_power(selected_device_power)\n    results.append(res)\nelse:\n    results.append(f'Bỏ qua công suất {selected_device_power}')"
                 },
                 {
                     "name": "Nhấn Write",
-                    "code": "if not acs_auto.find_and_click('write_btn', timeout=10):\n    results.append('Thất bại: không tìm thấy nút Write')\n    script_stop = True"
+                    "code": "if acs_auto.find_and_click('write_btn', timeout=10):\n    if not acs_auto.find('successfully_text', timeout=2):\n        results.append('Thất bại: Ghi UID thất bại')\n        script_stop = True\nelse:\n    results.append('Thất bại: không tìm thấy nút Write')\n    script_stop = True"
                 },
                 {
                     "name": "Lưu kết quả",
-                    "code": "if acs_auto.find('successfully_text', timeout=2):\n    if acs_auto.find_and_click('save_btn', timeout=10):\n        results.append('Thông báo: Ghi UID thành công!')\n    else:\n        results.append('Thất bại: không tìm thấy nút Save')\nelse:\n    results.append('Thất bại: Ghi UID thất bại.')"
+                    "code": "if acs_auto.find_and_click('save_btn', timeout=10):\n    results.append('Thông báo: Ghi UID thành công!')\nelse:\n    results.append('Thất bại: không tìm thấy nút Save')"
                 }
             ],
             "active": true
@@ -40,8 +48,16 @@
             "name": "Mặc định",
             "steps": [
                 {
+                    "name": "Đóng ACS Device Configuration nếu có",
+                    "code": "target_title = \"ACS Device Configuration - Version 1.6.0\"\ntry:\n    windows = pyautogui.getWindowsWithTitle(target_title)\n    if not windows:\n        logger.warning(f\"Không tìm thấy cửa sổ: '{target_title}'\")\n\n    window = windows[0]\n\n    if window.isMinimized:\n        window.restore()\n\n    window.activate()\n    window.close()\n\n    logger.info(\"Đã đóng cửa sổ ACS Device Manager\")\n\nexcept Exception as e:\n    logger.error(f\"Lỗi khi đóng cửa sổ: {e}\")\n"
+                },
+                {
+                    "name": "Chọn cửa sổ ACS Device Manager",
+                    "code": "target_title = \"ACS Device Manager - Version 1.5.0\"\nexe_path = r\"D:\\Program Files\\ACS\\ACS Device Manager_1.5.0\\Acs_Device_Manager_v1.5.0.exe\"\ntry:\n    windows = pyautogui.getWindowsWithTitle(target_title)\n    if not windows:\n        if not os.path.exists(exe_path):\n            logger.error(f\"Không tìm thấy file exe: {exe_path}\")\n\n        logger.info(\"Chưa mở ACS Device Manager. Đang chạy...\")\n        os.startfile(exe_path)\n\n        start_time = time.time()\n        while time.time() - start_time < timeout:\n            windows = pyautogui.getWindowsWithTitle(target_title)\n            if windows:\n                break\n            time.sleep(0.5)\n\n    if not windows:\n        logger.warning(f\"Không tìm thấy cửa sổ sau khi mở: '{target_title}'\")\n\n    window = windows[0]\n    if window.isMinimized:\n        window.restore()\n    try:\n        window.activate()\n    except Exception:\n        pass\n    logger.info(\"Đã activate ACS Device Manager\")\nexcept Exception as e:\n    logger.error(f\"Lỗi khi activate ACS Device Manager: {e}\")\n"
+                },
+                {
                     "name": "Kiểm tra danh sách",
-                    "code": "if not acs_auto.find('list', timeout=0.2):\n    if not acs_auto.find_and_click('load_btn', timeout=1):\n        results.append('Thất bại: không tìm thấy nút load_btn')\n        script_stop = True\n    if not acs_auto.find_and_click('adl_file', timeout=1):\n        results.append('Thất bại: không tìm thấy file adl')\n        script_stop = True\n    if not acs_auto.find_and_click('open_adl_btn', timeout=1):\n        results.append('Thất bại: không tìm thấy nút Open')\n        script_stop = True\n"
+                    "code": "if not acs_auto.find('list', timeout=0.2):\n    if not acs_auto.find_and_click('load_btn', timeout=1):\n        results.append('Thất bại: không tìm thấy nút load_btn')\n        script_stop = True\n    if not acs_auto.find_and_click('adl_file', timeout=2):\n        results.append('Thất bại: không tìm thấy file adl')\n        script_stop = True\n    if not acs_auto.find_and_click('open_adl_btn', timeout=1):\n        results.append('Thất bại: không tìm thấy nút Open')\n        script_stop = True"
                 },
                 {
                     "name": "Nhấn nút Add",
@@ -57,15 +73,15 @@
                 },
                 {
                     "name": "Chọn Power",
-                    "code": "if selected_device_power not in ('6', '18', '60', '120', 'Unspecified'):\n    res = acs_auto._select_device_power(selected_device_power)\n    results.append(res)\nelse:\n    results.append(f'Bỏ qua công suất {selected_device_power}')"
+                    "code": "if selected_device_type == 'Solenoid Valves':\n    results.append(f'Bỏ qua công suất {selected_device_power}')\nelif selected_device_power not in ('6', '18', '60', '120', 'Unspecified'):\n    res = acs_auto._select_device_power(selected_device_power)\n    results.append(res)\nelse:\n    results.append(f'Bỏ qua công suất {selected_device_power}')\n"
                 },
                 {
                     "name": "Nhấn Write",
-                    "code": "if not acs_auto.find_and_click('write_btn', timeout=10):\n    results.append('Thất bại: không tìm thấy nút Write')\n    script_stop = True\n"
+                    "code": "if acs_auto.find_and_click('write_btn', timeout=10):\n    if not acs_auto.find('successfully_text', timeout=2):\n        results.append('Thất bại: Ghi UID thất bại')\n        script_stop = True\nelse:\n    results.append('Thất bại: không tìm thấy nút Write')\n    script_stop = True"
                 },
                 {
                     "name": "Lưu kết quả",
-                    "code": "if acs_auto.find('successfully_text', timeout=2):\n    if acs_auto.find_and_click('save_btn', timeout=10):\n        results.append('Thông báo: Ghi UID thành công!')\n    else:\n        results.append('Thất bại: không tìm thấy nút Save')\nelse:\n    results.append('Thất bại: Ghi UID thất bại.')"
+                    "code": "if acs_auto.find_and_click('save_btn', timeout=10):\n    results.append('Thông báo: Ghi UID thành công!')\nelse:\n    results.append('Thất bại: không tìm thấy nút Save')\n"
                 }
             ],
             "active": true
@@ -76,8 +92,12 @@
             "name": "Ghi địa chỉ tối đa 1 bơm 1 led",
             "steps": [
                 {
-                    "name": "Chọn cửa sổ",
-                    "code": "acs_auto.click_acs_device_configuration(20, 50)\n"
+                    "name": "Đóng ACS Device manager nếu có",
+                    "code": "target_title = \"ACS Device Manager - Version 1.5.0\"\ntry:\n    windows = pyautogui.getWindowsWithTitle(target_title)\n    if not windows:\n        logger.warning(f\"Không tìm thấy cửa sổ: '{target_title}'\")\n\n    window = windows[0]\n\n    if window.isMinimized:\n        window.restore()\n\n    window.activate()\n    window.close()\n\n    logger.info(\"Đã đóng cửa sổ ACS Device Manager\")\n\nexcept Exception as e:\n    logger.error(f\"Lỗi khi đóng cửa sổ: {e}\")"
+                },
+                {
+                    "name": "Chọn cửa sổ ACS Device Configuration",
+                    "code": "target_title = \"ACS Device Configuration - Version 1.6.0\"\nexe_path = r\"D:\\Program Files\\ACS\\ACS Device Configuration 1.6.0\\ACS_Device_Configuration.exe\"\ntry:\n    windows = pyautogui.getWindowsWithTitle(target_title)\n    if not windows:\n        if not os.path.exists(exe_path):\n            logger.error(f\"Không tìm thấy file exe: {exe_path}\")\n\n        logger.info(\"Chưa mở ACS Device Configuration. Đang chạy...\")\n        os.startfile(exe_path)\n\n        start_time = time.time()\n        while time.time() - start_time < timeout:\n            windows = pyautogui.getWindowsWithTitle(target_title)\n            if windows:\n                break\n            time.sleep(0.5)\n\n    if not windows:\n        logger.warning(f\"Không tìm thấy cửa sổ sau khi mở: '{target_title}'\")\n\n    window = windows[0]\n    if window.isMinimized:\n        window.restore()\n    try:\n        window.activate()\n    except Exception:\n        pass\n    logger.info(\"Đã activate ACS Device Configuration\")\nexcept Exception as e:\n    logger.error(f\"Lỗi khi activate ACS Device Configuration: {e}\")"
                 },
                 {
                     "name": "Nhấn Discovery",
@@ -101,18 +121,21 @@
                 },
                 {
                     "name": "Xuống hàng",
-                    "code": "acs_auto.increment_excel_row_index() \nresults.append(\"\\n \".join(results) + f\" (Đã hoàn thành hàng {acs_auto.current_excel_row_index}/{len(acs_auto.excel_data)})\")\nscript_stop = True"
+                    "code": "acs_auto.increment_excel_row_index() \nresults.append(\"\\n \".join(results) + f\" (Đã hoàn thành hàng {acs_auto.current_excel_row_index}/)\")\nscript_stop = True"
                 }
             ],
             "active": true
         },
         {
-            "name": "Ghi địa chỉ biến tần",
-            "active": false,
+            "name": "Ghi địa chỉ nhiều led",
             "steps": [
                 {
-                    "name": "Chọn cửa sổ",
-                    "code": "acs_auto.click_acs_device_configuration(20, 50)\n"
+                    "name": "Đóng ACS Device manager nếu có",
+                    "code": "target_title = \"ACS Device Manager - Version 1.5.0\"\ntry:\n    windows = pyautogui.getWindowsWithTitle(target_title)\n    if not windows:\n        logger.warning(f\"Không tìm thấy cửa sổ: '{target_title}'\")\n\n    window = windows[0]\n\n    if window.isMinimized:\n        window.restore()\n\n    window.activate()\n    window.close()\n\n    logger.info(\"Đã đóng cửa sổ ACS Device Manager\")\n\nexcept Exception as e:\n    logger.error(f\"Lỗi khi đóng cửa sổ: {e}\")"
+                },
+                {
+                    "name": "Chọn cửa sổ ACS Device Configuration",
+                    "code": "target_title = \"ACS Device Configuration - Version 1.6.0\"\nexe_path = r\"D:\\Program Files\\ACS\\ACS Device Configuration 1.6.0\\ACS_Device_Configuration.exe\"\ntry:\n    windows = pyautogui.getWindowsWithTitle(target_title)\n    if not windows:\n        if not os.path.exists(exe_path):\n            logger.error(f\"Không tìm thấy file exe: {exe_path}\")\n\n        logger.info(\"Chưa mở ACS Device Configuration. Đang chạy...\")\n        os.startfile(exe_path)\n\n        start_time = time.time()\n        while time.time() - start_time < timeout:\n            windows = pyautogui.getWindowsWithTitle(target_title)\n            if windows:\n                break\n            time.sleep(0.5)\n\n    if not windows:\n        logger.warning(f\"Không tìm thấy cửa sổ sau khi mở: '{target_title}'\")\n\n    window = windows[0]\n    if window.isMinimized:\n        window.restore()\n    try:\n        window.activate()\n    except Exception:\n        pass\n    logger.info(\"Đã activate ACS Device Configuration\")\nexcept Exception as e:\n    logger.error(f\"Lỗi khi activate ACS Device Configuration: {e}\")\n"
                 },
                 {
                     "name": "Nhấn Discovery",
@@ -120,21 +143,64 @@
                 },
                 {
                     "name": "Nhấn Scan",
-                    "code": "if not acs_auto.find_and_click('scan_btn', timeout=0.2):\n    results.append(\"Thất bại: Không tìm thấy nút 'Scan' trong Device Discovery.\")\n    script_stop = True\n\nlogger.info(\"Đang chờ 'Discovery completed'...\")\n\nif not acs_auto.wait_for_image('discovery_completed_text', timeout=20): \n    results.append(\"Thất bại: 'Discovery completed' không xuất hiện trong thời gian chờ.\")\n    script_stop = True\n"
+                    "code": "if not acs_auto.find_and_click('scan_btn', timeout=0.2):\n    results.append(\"Thất bại: Không tìm thấy nút 'Scan' trong Device Discovery.\")\n    script_stop = True\n\nlogger.info(\"Đang chờ 'Discovery completed'...\")\n\nif not acs_auto.wait_for_image('discovery_completed_text', timeout=20): \n    results.append(\"Thất bại: 'Discovery completed' không xuất hiện trong thời gian chờ.\")\n    script_stop = True"
                 },
                 {
-                    "name": "Ghi địa chỉ biến tần",
-                    "code": "led_locs, pump_locs, dmx2vfd_locs = acs_auto.xac_dinh_vi_tri_thiet_bi(timeout=5)\nif dmx2vfd_locs:\n    dmx2vfd_result = acs_auto.chon_thiet_bi_va_ghi(\"Biến tần\", dmx2vfd_locs[0], dmx2vfd_address)\n    results.append(f\"DMX2VFD ({dmx2vfd_address}): {dmx2vfd_result}\")\n    if \"Failed\" in dmx2vfd_result:\n        results.append(\"Thất bại khi 'Ghi địa chỉ' (DMX2VFD): {dmx2vfd_result}\")\n        script_stop = True\n\nelse:\n    results.append(\"Thất bại: Không tìm thấy thiết bị (DMX2VFD) trong cửa sổ Device Discovery sau khi quét.\")\n    script_stop = True"
+                    "name": "Ghi địa chỉ bơm, led",
+                    "code": "def ghi_dia_chi_bom_led():\n    led_locs, pump_locs, dmx2vfd_locs = acs_auto.xac_dinh_vi_tri_thiet_bi(timeout=5)\n    if not led_locs and not pump_locs:\n        return False\n\n    if led_locs:\n        led_result = acs_auto.chon_thiet_bi_va_ghi(\"Tricolor Led\", led_locs[0], led_address)\n        results.append(f\"LED ({led_address}): {led_result}\")\n        if \"Failed\" in led_result:\n            results.append(f\"Thất bại khi 'Ghi địa chỉ' (LED): {led_result}\")\n            return False\n\n        time.sleep(1)\n\n        if pump_locs:\n            logger.info(\"Cả LED và PUMP đều được phát hiện. Đang discover lại cho PUMP sau LED.\")\n            if not acs_auto.find_and_click('discover_btn', timeout=15):\n                results.append(\"Thất bại: Không thể tìm thấy nút 'Discover'.\")\n                return False\n            _, pump_locs_after_rediscover, _ = acs_auto.xac_dinh_vi_tri_thiet_bi(timeout=5)\n\n            if pump_locs_after_rediscover:\n                pump_result = acs_auto.chon_thiet_bi_va_ghi(\"AFVarionaut Pump\", pump_locs_after_rediscover[0], pump_address)\n                results.append(f\"PUMP ({pump_address}): {pump_result}\")\n                if \"Failed\" in pump_result:\n                    results.append(f\"Thất bại khi 'Ghi địa chỉ' (PUMP): {pump_result}\")\n                    return False\n            else:\n                results.append(f\"Thất bại: Không tìm thấy PUMP sau khi discover lại cho địa chỉ {pump_address}.\")\n                return False\n\n    elif pump_locs:\n        pump_result = acs_auto.chon_thiet_bi_va_ghi(\"AFVarionaut Pump\", pump_locs[0], pump_address)\n        results.append(f\"PUMP ({pump_address}): {pump_result}\")\n        if \"Failed\" in pump_result:\n            results.append(f\"Thất bại khi 'Ghi địa chỉ' (PUMP): {pump_result}\")\n            return False\n\n    return True\n\nif not ghi_dia_chi_bom_led():\n    results.append(\"Thất bại: Không tìm thấy thiết bị (LED/PUMP) trong cửa sổ Device Discovery sau khi quét.\")\n    script_stop = True"
+                },
+                {
+                    "name": "Nhấn Discovery",
+                    "code": "if not acs_auto.find_and_click('discover_btn', timeout=0.2):\n    results.append(\"Thất bại: Không thể tìm thấy nút 'Discover'.\")\n    script_stop = True"
+                },
+                {
+                    "name": "Nhấn Scan",
+                    "code": "if not acs_auto.find_and_click('scan_btn', timeout=0.2):\n    results.append(\"Thất bại: Không tìm thấy nút 'Scan' trong Device Discovery.\")\n    script_stop = True"
                 },
                 {
                     "name": "Xuống hàng",
-                    "code": "acs_auto.increment_excel_row_index() \nresults.append(\"\\n \".join(results) + f\" (Đã hoàn thành hàng {acs_auto.current_excel_row_index}/{len(acs_auto.excel_data)})\")"
+                    "code": "acs_auto.increment_excel_row_index()\nresults.append(\"\\n \".join(results) + f\" (Đã hoàn thành hàng {acs_auto.current_excel_row_index}/{len(acs_auto.excel_data)})\")\n\nwhile True:\n#    if not acs_auto.find_and_click('discover_btn', timeout=0.2):\n#        results.append(\"Thất bại: Không thể tìm thấy nút 'Discover'.\")\n#        script_stop = True\n#        break\n#    if not acs_auto.find_and_click('scan_btn', timeout=0.2):\n#        results.append(\"Thất bại: Không tìm thấy nút 'Scan' trong Device Discovery.\")\n#        script_stop = True\n#        break\n#    logger.info(\"Đang chờ 'Discovery completed'...\")\n#    if not acs_auto.wait_for_image('discovery_completed_text', timeout=20):\n#        results.append(\"Thất bại: 'Discovery completed' không xuất hiện trong thời gian chờ.\")\n#        script_stop = True\n#        break\n#\n    if not ghi_dia_chi_bom_led():\n        results.append(\"Không còn thiết bị LED để ghi địa chỉ.\")\n        script_stop = True\n        break\n\n    acs_auto.increment_excel_row_index()"
+                }
+            ],
+            "active": false
+        },
+        {
+            "name": "Ghi địa chỉ biến tần",
+            "steps": [
+                {
+                    "name": "Đóng ACS Device manager nếu có",
+                    "code": "target_title = \"ACS Device Manager - Version 1.5.0\"\ntry:\n    windows = pyautogui.getWindowsWithTitle(target_title)\n    if not windows:\n        logger.warning(f\"Không tìm thấy cửa sổ: '{target_title}'\")\n\n    window = windows[0]\n\n    if window.isMinimized:\n        window.restore()\n\n    window.activate()\n    window.close()\n\n    logger.info(\"Đã đóng cửa sổ ACS Device Manager\")\n\nexcept Exception as e:\n    logger.error(f\"Lỗi khi đóng cửa sổ: {e}\")"
                 },
                 {
-                    "name": "Tắt",
-                    "code": "if not acs_auto.find_and_click('on_off_btn', timeout=0.2):\n    results.append(\"Thất bại: không tìm thấy nút 'On/Off'\")"
+                    "name": "Chọn cửa sổ ACS Device Configuration",
+                    "code": "target_title = \"ACS Device Configuration - Version 1.6.0\"\nexe_path = r\"D:\\Program Files\\ACS\\ACS Device Configuration 1.6.0\\ACS_Device_Configuration.exe\"\ntry:\n    windows = pyautogui.getWindowsWithTitle(target_title)\n    if not windows:\n        if not os.path.exists(exe_path):\n            logger.error(f\"Không tìm thấy file exe: {exe_path}\")\n\n        logger.info(\"Chưa mở ACS Device Configuration. Đang chạy...\")\n        os.startfile(exe_path)\n\n        start_time = time.time()\n        while time.time() - start_time < timeout:\n            windows = pyautogui.getWindowsWithTitle(target_title)\n            if windows:\n                break\n            time.sleep(0.5)\n\n    if not windows:\n        logger.warning(f\"Không tìm thấy cửa sổ sau khi mở: '{target_title}'\")\n\n    window = windows[0]\n    if window.isMinimized:\n        window.restore()\n    try:\n        window.activate()\n    except Exception:\n        pass\n    logger.info(\"Đã activate ACS Device Configuration\")\nexcept Exception as e:\n    logger.error(f\"Lỗi khi activate ACS Device Configuration: {e}\")\n"
+                },
+                {
+                    "name": "Nhấn Discovery",
+                    "code": "if acs_auto.find('device_discovery', timeout=0.2):\n    pass\nelse:\n    if not acs_auto.find('connected', timeout=0.2):\n        if not acs_auto.find_and_click('on_off_btn', timeout=0.2):\n            results.append(\"Thất bại: không tìm thấy nút 'On/Off'\")   \n            script_stop = True\n    else:\n        pass\n\n    if not acs_auto.find_and_click('discover_btn', timeout=0.2):\n        results.append(\"Thất bại: Không thể tìmm thấy nút 'Discover'\")\n        script_stop = True"
+                },
+                {
+                    "name": "Nhấn Scan",
+                    "code": "if not acs_auto.find_and_click('scan_btn', timeout=0.2):\n    results.append(\"Thất bại: Không tìm thấy nút 'Scan' trong Device Discovery.\")\n    script_stop = True\n\nlogger.info(\"Đang chờ 'Discovery completed'...\")\n\nif not acs_auto.wait_for_image('discovery_completed_text', timeout=20): \n    results.append(\"Thất bại: 'Discovery completed' không xuất hiện trong thời gian chờ.\")\n    script_stop = True"
+                },
+                {
+                    "name": "Ghi địa chỉ bơm, led",
+                    "code": "def ghi_dia_chi_bom_led():\n    led_locs, pump_locs, dmx2vfd_locs = acs_auto.xac_dinh_vi_tri_thiet_bi(timeout=5)\n    if not led_locs and not pump_locs:\n        return False\n\n    if led_locs:\n        led_result = acs_auto.chon_thiet_bi_va_ghi(\"Tricolor Led\", led_locs[0], led_address)\n        results.append(f\"LED ({led_address}): {led_result}\")\n        if \"Failed\" in led_result:\n            results.append(f\"Thất bại khi 'Ghi địa chỉ' (LED): {led_result}\")\n            return False\n\n        time.sleep(1)\n\n        if pump_locs:\n            logger.info(\"Cả LED và PUMP đều được phát hiện. Đang discover lại cho PUMP sau LED.\")\n            if not acs_auto.find_and_click('discover_btn', timeout=15):\n                results.append(\"Thất bại: Không thể tìm thấy nút 'Discover'.\")\n                return False\n\n            _, pump_locs_after_rediscover, _ = acs_auto.xac_dinh_vi_tri_thiet_bi(timeout=5)\n\n            if pump_locs_after_rediscover:\n                pump_result = acs_auto.chon_thiet_bi_va_ghi(\n                    \"AFVarionaut Pump\",\n                    pump_locs_after_rediscover[0],\n                    pump_address\n                )\n                results.append(f\"PUMP ({pump_address}): {pump_result}\")\n                if \"Failed\" in pump_result:\n                    results.append(f\"Thất bại khi 'Ghi địa chỉ' (PUMP): {pump_result}\")\n                    return False\n            else:\n                results.append(\n                    f\"Thất bại: Không tìm thấy PUMP sau khi discover lại cho địa chỉ {pump_address}.\"\n                )\n                return False\n\n    elif pump_locs:\n        pump_result = acs_auto.chon_thiet_bi_va_ghi(\"AFVarionaut Pump\", pump_locs[0], pump_address)\n        results.append(f\"PUMP ({pump_address}): {pump_result}\")\n        if \"Failed\" in pump_result:\n            results.append(f\"Thất bại khi 'Ghi địa chỉ' (PUMP): {pump_result}\")\n            return False\n\n    return True\n\n\nif not ghi_dia_chi_bom_led():\n    results.append(\n        \"Thất bại: Không tìm thấy thiết bị (LED/PUMP) trong cửa sổ Device Discovery sau khi quét.\"\n    )\n    script_stop = True\n"
+                },
+                {
+                    "name": "Nhấn Discovery",
+                    "code": "if not acs_auto.find_and_click('discover_btn', timeout=0.2):\n    results.append(\"Thất bại: Không thể tìm thấy nút 'Discover'.\")\n    script_stop = True"
+                },
+                {
+                    "name": "Nhấn Scan",
+                    "code": "if not acs_auto.find_and_click('scan_btn', timeout=0.2):\n    results.append(\"Thất bại: Không tìm thấy nút 'Scan' trong Device Discovery.\")\n    script_stop = True"
+                },
+                {
+                    "name": "Xuống hàng",
+                    "code": "acs_auto.increment_excel_row_index()\nresults.append(\"\\n \".join(results) + f\" (Đã hoàn thành hàng {acs_auto.current_excel_row_index}/)\")\n\nwhile True:\n    if not acs_auto.find_and_click('discover_btn', timeout=0.2):\n        results.append(\"Thất bại: Không thể tìm thấy nút 'Discover'.\")\n        script_stop = True\n        break\n\n    if not acs_auto.find_and_click('scan_btn', timeout=0.2):\n        results.append(\"Thất bại: Không tìm thấy nút 'Scan' trong Device Discovery.\")\n        script_stop = True\n        break\n\n    logger.info(\"Đang chờ 'Discovery completed'...\")\n\n    if not acs_auto.wait_for_image('discovery_completed_text', timeout=20):\n        results.append(\"Thất bại: 'Discovery completed' không xuất hiện trong thời gian chờ.\")\n        script_stop = True\n        break\n\n    if not ghi_dia_chi_bom_led():\n        results.append(\"Không còn thiết bị LED để ghi địa chỉ.\")\n        script_stop = True\n        break\n\n    acs_auto.increment_excel_row_index()\n"
                 }
-            ]
+            ],
+            "active": false
         }
     ],
     "test": [
@@ -142,8 +208,12 @@
             "name": "Test tối đa 1 bơm 1 led",
             "steps": [
                 {
-                    "name": "Chọn cửa sổ",
-                    "code": "acs_auto.click_acs_device_configuration(20, 50)"
+                    "name": "Đóng ACS Device manager nếu có",
+                    "code": "target_title = \"ACS Device Manager - Version 1.5.0\"\ntry:\n    windows = pyautogui.getWindowsWithTitle(target_title)\n    if not windows:\n        logger.warning(f\"Không tìm thấy cửa sổ: '{target_title}'\")\n\n    window = windows[0]\n\n    if window.isMinimized:\n        window.restore()\n\n    window.activate()\n    window.close()\n\n    logger.info(\"Đã đóng cửa sổ ACS Device Manager\")\n\nexcept Exception as e:\n    logger.error(f\"Lỗi khi đóng cửa sổ: {e}\")"
+                },
+                {
+                    "name": "Chọn cửa sổ ACS Device Configuration",
+                    "code": "target_title = \"ACS Device Configuration - Version 1.6.0\"\nexe_path = r\"D:\\Program Files\\ACS\\ACS Device Configuration 1.6.0\\ACS_Device_Configuration.exe\"\ntry:\n    windows = pyautogui.getWindowsWithTitle(target_title)\n    if not windows:\n        if not os.path.exists(exe_path):\n            logger.error(f\"Không tìm thấy file exe: {exe_path}\")\n\n        logger.info(\"Chưa mở ACS Device Configuration. Đang chạy...\")\n        os.startfile(exe_path)\n\n        start_time = time.time()\n        while time.time() - start_time < timeout:\n            windows = pyautogui.getWindowsWithTitle(target_title)\n            if windows:\n                break\n            time.sleep(0.5)\n\n    if not windows:\n        logger.warning(f\"Không tìm thấy cửa sổ sau khi mở: '{target_title}'\")\n\n    window = windows[0]\n    if window.isMinimized:\n        window.restore()\n    try:\n        window.activate()\n    except Exception:\n        pass\n    logger.info(\"Đã activate ACS Device Configuration\")\nexcept Exception as e:\n    logger.error(f\"Lỗi khi activate ACS Device Configuration: {e}\")\n"
                 },
                 {
                     "name": "Nhấn Discover",
@@ -170,8 +240,12 @@
             "name": "Ghi & Test tối đa 1 bơm 1 led",
             "steps": [
                 {
-                    "name": "Chọn cửa sổ",
-                    "code": "acs_auto.click_acs_device_configuration(20, 50)\n"
+                    "name": "Đóng ACS Device manager nếu có",
+                    "code": "target_title = \"ACS Device Manager - Version 1.5.0\"\ntry:\n    windows = pyautogui.getWindowsWithTitle(target_title)\n    if not windows:\n        logger.warning(f\"Không tìm thấy cửa sổ: '{target_title}'\")\n\n    window = windows[0]\n\n    if window.isMinimized:\n        window.restore()\n\n    window.activate()\n    window.close()\n\n    logger.info(\"Đã đóng cửa sổ ACS Device Manager\")\n\nexcept Exception as e:\n    logger.error(f\"Lỗi khi đóng cửa sổ: {e}\")"
+                },
+                {
+                    "name": "Chọn cửa sổ ACS Device Configuration",
+                    "code": "target_title = \"ACS Device Configuration - Version 1.6.0\"\nexe_path = r\"D:\\Program Files\\ACS\\ACS Device Configuration 1.6.0\\ACS_Device_Configuration.exe\"\ntry:\n    windows = pyautogui.getWindowsWithTitle(target_title)\n    if not windows:\n        if not os.path.exists(exe_path):\n            logger.error(f\"Không tìm thấy file exe: {exe_path}\")\n\n        logger.info(\"Chưa mở ACS Device Configuration. Đang chạy...\")\n        os.startfile(exe_path)\n\n        start_time = time.time()\n        while time.time() - start_time < timeout:\n            windows = pyautogui.getWindowsWithTitle(target_title)\n            if windows:\n                break\n            time.sleep(0.5)\n\n    if not windows:\n        logger.warning(f\"Không tìm thấy cửa sổ sau khi mở: '{target_title}'\")\n\n    window = windows[0]\n    if window.isMinimized:\n        window.restore()\n    try:\n        window.activate()\n    except Exception:\n        pass\n    logger.info(\"Đã activate ACS Device Configuration\")\nexcept Exception as e:\n    logger.error(f\"Lỗi khi activate ACS Device Configuration: {e}\")\n"
                 },
                 {
                     "name": "Nhấn Discovery",
@@ -183,11 +257,15 @@
                 },
                 {
                     "name": "Ghi và test",
-                    "code": "led_locs, pump_locs, dmx2vfd_locs = acs_auto.xac_dinh_vi_tri_thiet_bi(timeout=5)\n\nif led_locs:\n    led_result = acs_auto.chon_thiet_bi_va_ghi(\"Tricolor Led\", led_locs[0], led_address)\n\n    if not acs_auto.find_and_click('run_dmx_test_btn', timeout=10):\n        results.append(\"Thất bại: không thể tìm thấy 'Run DMX Test'.\")\n        script_stop = True\n    time.sleep(0.5)\n    if not acs_auto.find_and_click('selec_all_2', timeout=0.2):\n        results.append(\"Không tìm thấy 'select all' để tắt, bỏ qua.\")\n    if not acs_auto.is_slider_already_moved('dmx_slider_0_2', timeout=0.2):\n        if not acs_auto.drag_slider('dmx_slider_0', 0, -100, duration=0.6):\n            results.append(\"Thất bại: Không thể kéo thanh trượt 0.\")\n            script_stop = True\n    else:\n        results.append(\"Thanh trượt 0 đã được kéo.\")\n\n    if not acs_auto.drag_slider('dmx_slider_1', 0, -85, duration=0.6): # Kéo lên 85 pixel, 1 giây\n        results.append(\"Thất bại: Không thể kéo thanh trượt 1 lên.\")\n        script_stop = True\n    time.sleep(0.2)\n    if not acs_auto.drag_slider('dmx_slider_1', 0, 85, duration=0.6):  # Kéo xuống 85 pixel, 1 giây\n        results.append(\"Thất bại: Không thể kéo thanh trượt 1 xuống.\")\n        script_stop = True\n    if not acs_auto.drag_slider('dmx_slider_2', 0, -85, duration=0.6):\n        results.append(\"Thất bại: Không thể kéo thanh trượt 2 lên.\")\n        script_stop = True\n    time.sleep(0.2)\n    if not acs_auto.drag_slider('dmx_slider_2', 0, 85, duration=0.6):\n        results.append(\"Thất bại: Không thể kéo thanh trượt 2 xuống.\")\n        script_stop = True\n    if not acs_auto.drag_slider('dmx_slider_3', 0, -85, duration=0.6):\n        results.append(\"Thất bại: Không thể kéo thanh trượt 3 lên.\")\n        script_stop = True\n    time.sleep(0.2)\n    if not acs_auto.drag_slider('dmx_slider_3', 0, 85, duration=0.6):\n        results.append(\"Thất bại: Không thể kéo thanh trượt 3 xuống.\")\n        script_stop = True\n    if not acs_auto.find_and_click('selec_all_1', timeout=1):\n        results.append(\"Thất bại: Không thể bật select all.\")\n    if not acs_auto.drag_slider('dmx_slider_1', 0, -85, duration=0.6):\n        results.append(\"Thất bại: Không thể kéo thanh trượt 1 lên.\")\n        script_stop = True\n    time.sleep(2)\n    if not acs_auto.drag_slider('dmx_slider_1', 0, 85, duration=0.6):\n        results.append(\"Thất bại: Không thể kéo thanh trượt 1 xuống.\" )\n        script_stop = True\n    if not acs_auto.find_and_click('selec_all_2', timeout=1):\n        results.append(\"Thất bại: Không thể tắt select all.\")\n    if not acs_auto.find_and_click('stop_dmx_test_btn', timeout=10):\n        results.append(\"Thất bại: Không thể tìm thấy nút 'Stop DMX Test'.\")\n        script_stop = True\n    if pump_locs:\n        results.append(\"Cả LED và PUMP đều được phát hiện. Đang discover lại cho PUMP sau LED.\")\n        if not acs_auto.find_and_click('discover_btn', timeout=15):\n            results.append(\"Thất bại: Không tìm thấy nút 'Discover'.\")\n            script_stop = True\n        _, pump_locs_after_rediscover, _ = acs_auto.xac_dinh_vi_tri_thiet_bi(timeout=5)\n        \n        if pump_locs_after_rediscover:\n            pump_result = acs_auto.chon_thiet_bi_va_ghi(\"AFVarionaut Pump\", pump_locs_after_rediscover[0], pump_address)\n\n        if not acs_auto.find_and_click('run_dmx_test_btn', timeout=10):\n            results.append(\"Thất bại: Không tìm thấy nút 'Run DMX Test'.\")\n            script_stop = True\n        time.sleep(0.2)\n        if not acs_auto.find_and_click('selec_all_2', timeout=0.2):\n            results.append(\"Không tìm thấy 'select all' để tắt, bỏ qua.\")\n        if not acs_auto.is_slider_already_moved('dmx_slider_0_2', timeout=0.2):\n            if not acs_auto.drag_slider('dmx_slider_0', 0, -100, duration=0.5):\n                results.append(\"Thất bại: Không thể kéo thanh trượt 0.\")\n                script_stop = True\n        else:\n            results.append(\"Thanh trượt 0 đã được kéo.\")\n\n        if not acs_auto.drag_slider('dmx_slider_1', 0, -85, duration=1):\n            results.append(\"Thất bại: Không thể kéo thanh trượt 1 lên.\")\n            script_stop = True\n        time.sleep(1)\n        if not acs_auto.drag_slider('dmx_slider_1', 0, 85, duration=1):\n            results.append(\"Thất bại: Không thể kéo thanh trượt 1 xuống.\")\n            script_stop = True\n        if not acs_auto.find_and_click('stop_dmx_test_btn', timeout=10):\n            results.append(\"Thất bại: Không tìm thấy nút 'Stop DMX Test'.\")\n            script_stop = True\n\nelif pump_locs:\n    pump_result = acs_auto.chon_thiet_bi_va_ghi(\"AFVarionaut Pump\", pump_locs[0], pump_address)\n\n    if not acs_auto.find_and_click('run_dmx_test_btn', timeout=10):\n        results.append(\"Thất bại: Không tìm thấy nút 'Run DMX Test'.\")\n        script_stop = True\n    time.sleep(0.2)\n    if not acs_auto.is_slider_already_moved('dmx_slider_0_2', timeout=0.2):\n        if not acs_auto.drag_slider('dmx_slider_0', 0, -100, duration=0.5):\n            results.append(\"Thất bại: Không thể kéo thanh trượt 0.\")\n            script_stop = True\n    else:\n        results.append(\"Thanh trượt 0 đã được kéo.\")\n\n    if not acs_auto.drag_slider('dmx_slider_1', 0, -85, duration=1):\n        results.append(\"Thất bại: Không thể kéo thanh trượt 1 lên.\")\n        script_stop = True\n    time.sleep(1)\n    if not acs_auto.drag_slider('dmx_slider_1', 0, 85, duration=1):\n        results.append(\"Thất bại: Không thể kéo thanh trượt 1 xuống.\")\n        script_stop = True\n\n    if not acs_auto.find_and_click('stop_dmx_test_btn', timeout=10):\n        results.append(\"Thất bại: Không tìm thấy nút 'Stop DMX Test'.\")\n        script_stop = True\n\nelse:\n    acs_auto.increment_excel_row_index()\n    results.append(\"Thất bại: Không thấy thiết bị (LED/PUMP) trong cửa sổ Device Discovery sau khi quét.\")\n    script_stop = True\n\nif not acs_auto.find_and_click('discover_btn', timeout=0.2):\n    results.append(\"Thất bại: Không thể tìm thấy nút 'Discover'.\")\n    script_stop = True\n\nif not acs_auto.find_and_click('scan_btn', timeout=0.2):\n    results.append(\"Thất bại: Không tìm thấy nút 'Scan' trong Device Discovery.\")\n    script_stop = True\n"
+                    "code": "led_locs, pump_locs, dmx2vfd_locs = acs_auto.xac_dinh_vi_tri_thiet_bi(timeout=5)\n\nif led_locs:\n    led_result = acs_auto.chon_thiet_bi_va_ghi(\"Tricolor Led\", led_locs[0], led_address)\n\n    if not acs_auto.find_and_click('run_dmx_test_btn', timeout=10):\n        results.append(\"Thất bại: không thể tìm thấy 'Run DMX Test'.\")\n        script_stop = True\n    time.sleep(0.5)\n    if not acs_auto.find_and_click('selec_all_2', timeout=0.2):\n        results.append(\"Không tìm thấy 'select all' để tắt, bỏ qua.\")\n    if not acs_auto.is_slider_already_moved('dmx_slider_0_2', timeout=0.2):\n        if not acs_auto.drag_slider('dmx_slider_0', 0, -100, duration=0.6):\n            results.append(\"Thất bại: Không thể kéo thanh trượt 0.\")\n            script_stop = True\n    else:\n        results.append(\"Thanh trượt 0 đã được kéo.\")\n\n    if not acs_auto.drag_slider('dmx_slider_1', 0, -85, duration=0.6): # Kéo lên 85 pixel, 1 giây\n        results.append(\"Thất bại: Không thể kéo thanh trượt 1 lên.\")\n        script_stop = True\n    time.sleep(0.2)\n    if not acs_auto.drag_slider('dmx_slider_1', 0, 85, duration=0.6):  # Kéo xuống 85 pixel, 1 giây\n        results.append(\"Thất bại: Không thể kéo thanh trượt 1 xuống.\")\n        script_stop = True\n    if not acs_auto.drag_slider('dmx_slider_2', 0, -85, duration=0.6):\n        results.append(\"Thất bại: Không thể kéo thanh trượt 2 lên.\")\n        script_stop = True\n    time.sleep(0.2)\n    if not acs_auto.drag_slider('dmx_slider_2', 0, 85, duration=0.6):\n        results.append(\"Thất bại: Không thể kéo thanh trượt 2 xuống.\")\n        script_stop = True\n    if not acs_auto.drag_slider('dmx_slider_3', 0, -85, duration=0.6):\n        results.append(\"Thất bại: Không thể kéo thanh trượt 3 lên.\")\n        script_stop = True\n    time.sleep(0.2)\n    if not acs_auto.drag_slider('dmx_slider_3', 0, 85, duration=0.6):\n        results.append(\"Thất bại: Không thể kéo thanh trượt 3 xuống.\")\n        script_stop = True\n    if not acs_auto.find_and_click('selec_all_1', timeout=1):\n        results.append(\"Thất bại: Không thể bật select all.\")\n    if not acs_auto.drag_slider('dmx_slider_1', 0, -85, duration=0.6):\n        results.append(\"Thất bại: Không thể kéo thanh trượt 1 lên.\")\n        script_stop = True\n    time.sleep(2)\n    if not acs_auto.drag_slider('dmx_slider_1', 0, 85, duration=0.6):\n        results.append(\"Thất bại: Không thể kéo thanh trượt 1 xuống.\" )\n        script_stop = True\n    if not acs_auto.find_and_click('selec_all_2', timeout=1):\n        results.append(\"Thất bại: Không thể tắt select all.\")\n    if not acs_auto.find_and_click('stop_dmx_test_btn', timeout=10):\n        results.append(\"Thất bại: Không thể tìm thấy nút 'Stop DMX Test'.\")\n        script_stop = True\n    if pump_locs:\n        results.append(\"Cả LED và PUMP đều được phát hiện. Đang discover lại cho PUMP sau LED.\")\n        if not acs_auto.find_and_click('discover_btn', timeout=15):\n            results.append(\"Thất bại: Không tìm thấy nút 'Discover'.\")\n            script_stop = True\n        _, pump_locs_after_rediscover, _ = acs_auto.xac_dinh_vi_tri_thiet_bi(timeout=5)\n        \n        if pump_locs_after_rediscover:\n            pump_result = acs_auto.chon_thiet_bi_va_ghi(\"AFVarionaut Pump\", pump_locs_after_rediscover[0], pump_address)\n\n        if not acs_auto.find_and_click('run_dmx_test_btn', timeout=10):\n            results.append(\"Thất bại: Không tìm thấy nút 'Run DMX Test'.\")\n            script_stop = True\n        time.sleep(0.2)\n        if not acs_auto.find_and_click('selec_all_2', timeout=0.2):\n            results.append(\"Không tìm thấy 'select all' để tắt, bỏ qua.\")\n        if not acs_auto.is_slider_already_moved('dmx_slider_0_2', timeout=0.2):\n            if not acs_auto.drag_slider('dmx_slider_0', 0, -100, duration=0.5):\n                results.append(\"Thất bại: Không thể kéo thanh trượt 0.\")\n                script_stop = True\n        else:\n            results.append(\"Thanh trượt 0 đã được kéo.\")\n\n        if not acs_auto.drag_slider('dmx_slider_1', 0, -85, duration=1):\n            results.append(\"Thất bại: Không thể kéo thanh trượt 1 lên.\")\n            script_stop = True\n        time.sleep(1)\n        if not acs_auto.drag_slider('dmx_slider_1', 0, 85, duration=1):\n            results.append(\"Thất bại: Không thể kéo thanh trượt 1 xuống.\")\n            script_stop = True\n        if not acs_auto.find_and_click('stop_dmx_test_btn', timeout=10):\n            results.append(\"Thất bại: Không tìm thấy nút 'Stop DMX Test'.\")\n            script_stop = True\n\nelif pump_locs:\n    pump_result = acs_auto.chon_thiet_bi_va_ghi(\"AFVarionaut Pump\", pump_locs[0], pump_address)\n\n    if not acs_auto.find_and_click('run_dmx_test_btn', timeout=10):\n        results.append(\"Thất bại: Không tìm thấy nút 'Run DMX Test'.\")\n        script_stop = True\n    time.sleep(0.2)\n    if not acs_auto.is_slider_already_moved('dmx_slider_0_2', timeout=0.2):\n        if not acs_auto.drag_slider('dmx_slider_0', 0, -100, duration=0.5):\n            results.append(\"Thất bại: Không thể kéo thanh trượt 0.\")\n            script_stop = True\n    else:\n        results.append(\"Thanh trượt 0 đã được kéo.\")\n\n    if not acs_auto.drag_slider('dmx_slider_1', 0, -85, duration=1):\n        results.append(\"Thất bại: Không thể kéo thanh trượt 1 lên.\")\n        script_stop = True\n    time.sleep(1)\n    if not acs_auto.drag_slider('dmx_slider_1', 0, 85, duration=1):\n        results.append(\"Thất bại: Không thể kéo thanh trượt 1 xuống.\")\n        script_stop = True\n\n    if not acs_auto.find_and_click('stop_dmx_test_btn', timeout=10):\n        results.append(\"Thất bại: Không tìm thấy nút 'Stop DMX Test'.\")\n        script_stop = True\n\nelse:\n    acs_auto.increment_excel_row_index()\n    results.append(\"Thất bại: Không thấy thiết bị (LED/PUMP) trong cửa sổ Device Discovery sau khi quét.\")\n    script_stop = True\n\n#if not acs_auto.find_and_click('discover_btn', timeout=0.2):\n#    results.append(\"Thất bại: Không thể tìm thấy nút 'Discover'.\")\n#    script_stop = True\n\n#if not acs_auto.find_and_click('scan_btn', timeout=0.2):\n#    results.append(\"Thất bại: Không tìm thấy nút 'Scan' trong Device Discovery.\")\n#    script_stop = True\n"
+                },
+                {
+                    "name": "Tắt",
+                    "code": "if not acs_auto.find_and_click('on_off_btn', timeout=0.2):\n    results.append(\"Thất bại: không tìm thấy nút 'On/Off'\")\n\nresults.append(f\"Đã Ghi & test xong.\")"
                 },
                 {
                     "name": "Xuống hàng",
-                    "code": "acs_auto.increment_excel_row_index() \nresults.append(\"\\n \".join(results) + f\" (Đã hoàn thành hàng {acs_auto.current_excel_row_index}/{len(acs_auto.excel_data)})\")\n\nresults.append(f\"Thành công: 'Ghi địa chỉ & Test' đã hoàn thành.\")"
+                    "code": "acs_auto.increment_excel_row_index() \nresults.append(\"\\n \".join(results) + f\" (Đã hoàn thành hàng {acs_auto.current_excel_row_index}/)\")\n\nresults.append(f\"Thành công: 'Ghi địa chỉ & Test' đã hoàn thành.\")"
                 }
             ],
             "active": true
